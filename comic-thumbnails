@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+
+# -*- coding: utf-8 -*-
+
+# Author: Milan Nikolic <gen2brain@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import os
+import sys
+import re
+from optparse import OptionParser
+from hashlib import md5
+
+try:
+    import Image
+    import PngImagePlugin
+except ImportError:
+    sys.stderr.write('Could not import the Image module (PIL).')
+    sys.exit(1)
+
+try:
+    if os.path.isdir(os.path.join(".","src")) and os.path.isfile(
+            os.path.join(".","setup.py")):
+        from src import utils
+        from src.debug import log
+    else:
+        from comicutils import utils
+        from comicutils.debug import log
+except ImportError:
+    sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
+    sys.exit(1)
+
+def filter_quality(quality):
+    if quality == 0:
+        imfilter = Image.NEAREST
+    elif quality == 1:
+        imfilter = Image.BILINEAR
+    elif quality == 2:
+        imfilter = Image.BICUBIC
+    elif quality == 3:
+        imfilter = Image.ANTIALIAS
+    else:
+        imfilter = Image.NEAREST
+    return imfilter
+
+def create_thumbnail(outpath, file, opts):
+    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
+    thumbpath = get_thumb_path(file, outpath, opts.type)
+    extractor = utils.Extractor(fullpath)
+    files = extractor.get_files()
+    cover = utils.guess_cover(files)
+    imfilter = filter_quality(opts.quality)
+
+    try:
+        fd = extractor.extract(cover)
+        im = Image.open(fd)
+        im.verify()
+    except Exception:
+        log.Error("Cannot identify image file")
+
+    if im.size[0] > im.size[1]:
+        x = opts.size
+        y = opts.size * im.size[1] / im.size[0]
+    else:
+        x = opts.size * im.size[0] / im.size[1]
+        y = opts.size
+    x = max(1, x)
+    y = max(1, y)
+
+    info = PngImagePlugin.PngInfo()
+    info.add_text("Thumb::URI", fileuri)
+    info.add_text("Thumb::MTime", str(int(filemtime)))
+
+    im.thumbnail((x, y), imfilter)
+    im = im.convert('RGB')
+    im.save(thumbpath, 'PNG', pnginfo=info)
+
+def get_thumb_path(file, outpath, type):
+    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
+    if type == 0:
+        thumbname = "%s.png" % md5(fileuri).hexdigest()
+    elif type == 1:
+        thumbname = "%s.png" % filename
+    thumbpath = os.path.join(outpath, thumbname)
+    return thumbpath
+
+def main(path, opts):
+    if opts.outpath:
+        if os.path.isdir(opts.outpath):
+            outpath = os.path.realpath(opts.outpath)
+        else:
+            log.Error('Error: %s is not a directory' % (opts.outpath))
+    else:
+        outpath = os.path.expanduser('~/.thumbnails/normal')
+        if not os.path.isdir(outpath):
+            os.makedirs(outpath)
+
+    try:
+        comics = utils.get_comics(path)
+        for file in comics:
+            filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
+            if not opts.overwrite:
+                thumbpath = get_thumb_path(file, outpath, opts.type)
+                if os.path.exists(thumbpath) and opts.type != 1:
+                    pim = Image.open(thumbpath)
+                    if int(filemtime) != int(pim.info['Thumb::MTime']):
+                        pass
+                    else:
+                        continue
+            create_thumbnail(outpath, file, opts)
+    except KeyboardInterrupt:
+        pass
+    except Exception, err:
+        log.Error('Error: %s %s' % (str(type(err)), str(err)))
+
+if __name__ == '__main__':
+    usage = 'usage: %prog <options> <file or dir>'
+    desc = "Example: %prog -s 512 -o ~/thumbnails /media/comics/thorgal"
+    parser = OptionParser(usage=usage, description=desc)
+    parser.add_option('-s', '--size', action='store', dest='size', type='int', default=512,
+            help='thumbnail size (default %default)', metavar='<arg>')
+    parser.add_option('-o', '--outdir', action='store', dest='outpath', type='string', default=None,
+            help='output directory (default is ~/thumbnails/normal)', metavar='<arg>')
+    parser.add_option('-q', '--quality', action='store', dest='quality', type='int', default=0,
+            help='quality filter, 0 = NEAREST (default), 1 = BILINEAR, 2 = BICUBIC, 3 = ANTIALIAS', metavar='<arg>')
+    parser.add_option('-f', '--force', action='store_true', dest='overwrite', default=False,
+            help='overwrite', metavar='<arg>')
+    parser.add_option('-t', '--type', action='store', dest='type', type='int', default=0,
+            help='type, 0 = freedesktop (default), 1 = normal', metavar='<arg>')
+    (opts, args) = parser.parse_args()
+
+    try:
+        path = os.environ['NAUTILUS_SCRIPT_CURRENT_URI']
+        path = utils.uri_to_file(path)
+    except Exception:
+        try:
+            path = os.path.realpath(args[0])
+        except Exception:
+            parser.print_help()
+            sys.exit(1)
+
+    main(path, opts)
