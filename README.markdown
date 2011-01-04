@@ -45,7 +45,7 @@ This example will rescale images to 1200px for all comic archive files in direct
 
 This example will convert all images except comicbook cover to 4bit BMP image, cover will be 8bit BMP in 256 colors. Also, archive is converted to zip format so you get as a result .cbz file in _converted directory.
 
-[BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is lossless format, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
+[BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is uncompressed, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
 
 
 #### comic-thumbnails
