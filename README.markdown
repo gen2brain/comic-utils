@@ -11,6 +11,8 @@ This is a simple tool for editing [comic book archives](http://en.wikipedia.org/
 Included are scripts that I use daily to rescale/convert images in archives, convert cbr to cbz and to create thumbnails by [freedesktop](http://www.freedesktop.org/wiki/) standards to be used in file managers.
 Only cbr and cbz archives are supported.
 
+Note: Windows users can download zip package from downloads. Package doesn't contain rar.exe, you must copy that file to comic-utils/bin/rar.exe. File can be found on http://www.rarlab.com or if you already have winrar installed you can find it in Program Files.
+
 Using
 =====
 
