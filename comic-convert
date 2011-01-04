@@ -151,9 +151,6 @@ def convert_images(tempdir, opts):
                             depth, colors = 4, 16
 
                         try:
-                            new_path = fullpath[:-3] + 'bmp'
-                            new_file = open(new_path, 'w')
-
                             convert = Popen([APP['convert'], fullpath, '+matte', '-colors', str(colors), 'ppm:-'],
                                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
                             pnm = Popen([APP['pnmdepth'], str(depth)],
@@ -163,10 +160,14 @@ def convert_images(tempdir, opts):
 
                             lines = bmp.stdout.readlines()
                             bmp.wait()
-                            for line in lines:
-                                new_file.write(line)
-                            new_file.close()
-                            os.unlink(fullpath)
+                            if len(lines) > 0:
+                                basename, fileext = os.path.splitext(fullpath)
+                                new_path = fullpath[:-3] + 'bmp'
+                                new_file = open(new_path, 'w')
+                                new_file.writelines(lines)
+                                new_file.close()
+                                if fileext.lower() != '.bmp':
+                                    os.unlink(fullpath)
                         except OSError:
                             new_file.close()
 
@@ -183,15 +184,8 @@ def exclude_callback(option, opt, value, parser):
 
 def main(rootpath, opts):
     if opts.outdir:
-        if os.path.isdir(opts.outdir):
-            convdir = os.path.realpath(opts.outdir)
-        else:
-            log.Error('Error: %s is not a directory\n' % (opts.outdir))
-    else:
-        if os.path.isfile(rootpath):
-            convdir = os.path.join(os.path.dirname(rootpath), '_converted')
-        else:
-            convdir = os.path.join(rootpath, '_converted')
+        if not os.path.isdir(opts.outdir):
+            log.Error('Error: %s is not a directory' % (opts.outdir))
 
     try:
         comics = utils.get_comics(rootpath, opts.size)
@@ -200,6 +194,11 @@ def main(rootpath, opts):
 
         for file in comics:
             filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
+
+            if opts.outdir:
+                convdir = os.path.realpath(opts.outdir)
+            else:
+                convdir = os.path.join(filedir, '_converted')
 
             if opts.verbose:
                 sys.stderr.write('File %d of %d\n' % (filenum, total))
@@ -215,21 +214,19 @@ def main(rootpath, opts):
                 if convert_images(tempdir, opts):
                     if opts.verbose:
                         sys.stderr.write('File %s converted\n' % (filename))
-                    if not os.path.isdir(convdir):
+                    if not opts.outdir and not os.path.isdir(convdir):
                         os.mkdir(convdir)
-                    if not os.path.isdir(os.path.join(convdir, filedir)):
-                        os.makedirs(os.path.join(convdir, filedir))
                     if opts.verbose:
                         sys.stderr.write('Packing... \r')
 
                     if opts.rar:
                         filetype = 'RAR'
-                        filename = filename[:-3] + 'cbr'
+                        filename = '%s.cbr' % basename
                     elif opts.zip:
                         filetype = 'ZIP'
-                        filename = filename[:-3] + 'cbz'
+                        filename = '%s.cbz' % basename
 
-                    filepath = os.path.join(convdir, filedir, filename)
+                    filepath = os.path.join(convdir, filename)
                     if pack_archive(tempdir, filetype, filepath):
                         if opts.verbose:
                             sys.stderr.write('File %s packed (%sMB)\n\n' % (
@@ -250,15 +247,15 @@ if __name__ == '__main__':
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
     parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='80',
-            help='image quality (default %default)', metavar='<arg>')
+            help='image quality (default %default, used with -s)', metavar='<arg>')
     parser.add_option('-o', '--outdir', action='store', dest='outdir', type='string', default=None,
-            help='output directory (default is _converted in proccesed directory)', metavar='<ARG>')
+            help='output directory (default is _converted in proccesed directory)', metavar='<arg>')
     parser.add_option('-m', '--size', action='store', dest='size', type='int', default=None,
-            help='process only files larger then size (in MB)', metavar='<ARG>')
+            help='process only files larger then size (in MB)', metavar='<arg>')
     parser.add_option('-b', '--bmp-4', action='store_true', dest='bmp', default=False,
             help='convert images to 4bit BMP', metavar='<arg>')
     parser.add_option('-c', '--cover', action='store_true', dest='cover', default=False,
-            help='convert cover to 8bit instead of 4bit (used with -b)', metavar='<ARG>')
+            help='convert cover to 8bit instead of 4bit (used with -b)', metavar='<arg>')
     parser.add_option('-B', '--bmp-8', action='store_true', dest='BMP', default=False,
             help='convert images to 8bit BMP', metavar='<arg>')
     parser.add_option('-e', '--exclude', action='callback', dest='exclude', type='string', callback=exclude_callback,

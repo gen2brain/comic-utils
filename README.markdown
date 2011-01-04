@@ -1,7 +1,7 @@
 Comic Utils
 ===========
 
-Author: Milan Nikolic
+Author: Milan Nikolic 
 License: GPL-3
 
 Introduction
@@ -21,7 +21,7 @@ Using
     Options:
       -h, --help                show this help message and exit
       -s <arg>, --scale=<arg>   image geometry (default 100%)
-      -q <arg>, --quality=<arg> image quality (default 80)
+      -q <arg>, --quality=<arg> image quality (default 80, used with -s)
       -o <ARG>, --outdir=<ARG>  output directory (default is _converted in proccesed directory)
       -m <ARG>, --size=<ARG>    process only files larger then size (in MB)
       -b, --bmp-4               convert images to 4bit BMP
@@ -41,9 +41,9 @@ This example will rescale images to 1200px for all comic archive files in direct
 
     comic-convert --bmp-4 --cover --zip /mnt/media/comics/BradBarron/Brad_Barron_01 - Neljudi.cbr
 
-This example will convert all images except comicbook cover to 4bit BMP image, cover will be 8bit BMP in 256 colors. Also, archive is converted to zip format so you get as a result "Brad_Barron_01 - Neljudi.cbz" file in "_converted" directory.
+This example will convert all images except comicbook cover to 4bit BMP image, cover will be 8bit BMP in 256 colors. Also, archive is converted to zip format so you get as a result .cbz file in _converted directory.
 
-BMP format is lossless format, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
+[BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is lossless format, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
 
 
 #### comic-thumbnails
@@ -63,11 +63,11 @@ Examples:
     comic-thumbnails --quality=3 --force /mnt/media/comics
 
 This example will generate thumbnails by freedesktop standards in ~/.thumbnails/normal directory for whole comics collection.
-Thumbnails will be 512px but since Gnome nautilus doesn't care about large directory we put those in normal so we can have nice and large thumbnails when we zoom in. Once comic-utils are installed you can make symlink like this:
+Thumbnails will be 512px but since Gnome nautilus doesn't care about large directory we put those in normal so we can have nice and large thumbnails when we zoom in. Once comic-utils are installed you can make symlink like this.
 
     ln -s /usr/bin/comics-thumbnails ~/.gnome2/nautilus-scripts/comics-thumbnails
 
-and have script available on right click in nautilus. Down side to this is that after thumbnails are created you have to reload nautilus, it's not possible to do that from script.
+And have script available on right click in nautilus. Down side to this is that after thumbnails are created you have to reload nautilus, it's not possible to do that from script.
 For XFCE Thunar file manager you can create [custom action](http://thunar.xfce.org/plugins.html#thunar-uca) .
 
     comic-thumbnails -t 1 -o /tmp/thumbs
