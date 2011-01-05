@@ -91,7 +91,7 @@ def get_comics(rootpath, size=None):
 
 def get_images(dir):
     images = []
-    regex = re.compile(r'^.*\.(jpg|jpeg|jpe|png|bmp|tiff)$', re.IGNORECASE)
+    regex = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)$', re.IGNORECASE)
     try:
         for dirpath, dirnames, filenames in os.walk(dir):
             alphanumeric_sort(filenames)

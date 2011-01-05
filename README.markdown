@@ -23,16 +23,18 @@ Using
     Options:
       -h, --help                show this help message and exit
       -s <arg>, --scale=<arg>   image geometry (default 100%)
-      -q <arg>, --quality=<arg> image quality (default 80, used with --scale)
+      -q <arg>, --quality=<arg> image quality (default 75, used with --jpeg, --png and --scale)
       -o <arg>, --outdir=<arg>  output directory (default is _converted in proccesed directory)
       -m <arg>, --size=<arg>    process only files larger then size (in MB)
-      -b, --bmp-4               convert images to 4bit BMP
+      -b, --bmp-4               convert images to 4bit BMP format
       -c, --cover               convert cover to 8bit BMP instead of 4bit (used with --bmp-4)
       -n, --no-cover            exclude cover
-      -B, --bmp-8               convert images to 8bit BMP
-      -e <arg>, --exclude=<arg> list of exclude files (0,2,13)
-      -r, --rar                 convert archive to rar
-      -z, --zip                 convert archive to zip
+      -B, --bmp-8               convert images to 8bit BMP format
+      -j, --jpeg                convert images to JPEG format
+      -p, --png                 convert images to PNG format
+      -e <arg>, --exclude=<arg> list of images to exclude (0,2,13)
+      -r, --rar                 convert archive to RAR format
+      -z, --zip                 convert archive to ZIP format
       -v, --verbose             verbose (default)
       -Q, --quiet               quiet
 

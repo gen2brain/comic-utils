@@ -19,7 +19,6 @@
 
 import os
 import sys
-import re
 from optparse import OptionParser
 from hashlib import md5
 
@@ -127,8 +126,7 @@ def main(path, opts):
 
 if __name__ == '__main__':
     usage = 'usage: %prog <options> <file or dir>'
-    desc = "Example: %prog -s 512 -o ~/thumbnails /media/comics/thorgal"
-    parser = OptionParser(usage=usage, description=desc)
+    parser = OptionParser(usage=usage)
     parser.add_option('-s', '--size', action='store', dest='size', type='int', default=512,
             help='thumbnail size (default %default)', metavar='<arg>')
     parser.add_option('-o', '--outdir', action='store', dest='outpath', type='string', default=None,

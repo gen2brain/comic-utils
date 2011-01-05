@@ -40,7 +40,7 @@ except ImportError:
 APP = {}
 BINDIR = os.path.join(sys.path[0], 'bin')
 
-for cmd in ['rar', 'mogrify', 'convert', 'pnmdepth', 'ppmtobmp']:
+for cmd in ['rar', 'mogrify', 'convert', 'ppmtobmp']:
     if os.name == 'nt':
         command = os.path.join(BINDIR, cmd)
         if os.path.isfile("%s.exe" % command):
@@ -115,6 +115,78 @@ def pack_archive(tempdir, filetype, filepath):
                 filetype, basename, str(err)))
     return False
 
+def image_scale(fullpath, opts):
+    p = Popen([APP['mogrify'], '-quality', str(opts.quality),
+        '-scale', str(opts.scale), fullpath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    p.wait()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    return True
+
+def image_bmp(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    if opts.cover and filename == cover:
+        depth, colors = 8, 256
+    elif opts.BMP:
+        depth, colors = 8, 256
+    elif opts.bmp:
+        depth, colors = 4, 16
+    try:
+        convert = Popen([APP['convert'], fullpath, '+matte',
+            '-scale', str(opts.scale),
+            '-depth', str(depth), '-colors', str(colors), 'ppm:-'],
+                stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        bmp = Popen([APP['ppmtobmp'], '-bpp', str(depth)],
+                stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
+        lines = bmp.stdout.readlines()
+        if len(lines) > 0:
+            newpath = os.path.join(
+                    os.path.dirname(fullpath), '%s.bmp' % basename)
+            newfile = open(newpath, 'w')
+            newfile.writelines(lines)
+            newfile.close()
+            if fileext.lower() != '.bmp':
+                os.unlink(fullpath)
+        return True
+    except OSError:
+        newfile.close()
+        return False
+
+def image_jpeg(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    newpath = os.path.join(
+            os.path.dirname(fullpath), '%s.jpg' % basename)
+    p = Popen([APP['convert'], fullpath, '-quality', str(opts.quality),
+        '-scale', str(opts.scale), newpath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    p.wait()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    if fileext.lower() != '.jpg':
+        os.unlink(fullpath)
+    return True
+
+def image_png(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    newpath = os.path.join(
+            os.path.dirname(fullpath), '%s.png' % basename)
+    p = Popen([APP['convert'], fullpath, '-quality', str(opts.quality),
+        '-scale', str(opts.scale), newpath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    p.wait()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    if fileext.lower() != '.png':
+        os.unlink(fullpath)
+    return True
+
 def convert_images(tempdir, opts):
     exclude = [] if not opts.exclude else opts.exclude
     images = utils.get_images(tempdir)
@@ -127,40 +199,14 @@ def convert_images(tempdir, opts):
             if opts.nocover and filename == cover:
                 continue
 
-            if opts.scale != '100%':
-                p = Popen([APP['mogrify'], '-quality', str(opts.quality), '-scale', str(opts.scale), fullpath],
-                        stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                out = p.communicate()
-                p.wait()
-                if out[1] != '':
-                    log.Warn('Error converting file %s: %s\n' % (fullpath, out[1]))
-                    return False
-
             if opts.bmp or opts.BMP:
-                if filename == cover and opts.cover:
-                    depth, colors = 8, 256
-                elif opts.BMP:
-                    depth, colors = 8, 256
-                elif opts.bmp:
-                    depth, colors = 4, 16
-
-                try:
-                    convert = Popen([APP['convert'], fullpath, '+matte',
-                        '-depth', str(depth), '-colors', str(colors), 'ppm:-'],
-                            stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                    bmp = Popen([APP['ppmtobmp'], '-bpp', str(depth)],
-                            stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
-                    lines = bmp.stdout.readlines()
-                    if len(lines) > 0:
-                        new_path = os.path.join(
-                                os.path.dirname(fullpath), '%s.bmp' % basename)
-                        new_file = open(new_path, 'w')
-                        new_file.writelines(lines)
-                        new_file.close()
-                        if fileext.lower() != '.bmp':
-                            os.unlink(fullpath)
-                except OSError:
-                    new_file.close()
+                image_bmp(file, opts)
+            elif opts.jpeg:
+                image_jpeg(file, opts)
+            elif opts.png:
+                image_png(file, opts)
+            elif opts.scale != '100%' or opts.quality != '75':
+                image_scale(fullpath, opts)
 
             if opts.verbose:
                 percent = float(filenum) / float(maxrecords) * 100
@@ -233,30 +279,33 @@ def main(rootpath, opts):
 
 if __name__ == '__main__':
     usage = 'usage: %prog <options> <file or dir>'
-    desc = 'Example: %prog -s 1600x1200 -r 80 -o ~/scaled /media/comics/thorgal'
-    parser = OptionParser(usage=usage, description=desc)
+    parser = OptionParser(usage=usage)
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
-    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='80',
-            help='image quality (default %default, used with --scale)', metavar='<arg>')
+    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='75',
+            help='image quality (default %default, used with --jpeg, --png and --scale)', metavar='<arg>')
     parser.add_option('-o', '--outdir', action='store', dest='outdir', type='string', default=None,
             help='output directory (default is _converted in proccesed directory)', metavar='<arg>')
     parser.add_option('-m', '--size', action='store', dest='size', type='int', default=None,
             help='process only files larger then size (in MB)', metavar='<arg>')
     parser.add_option('-b', '--bmp-4', action='store_true', dest='bmp', default=False,
-            help='convert images to 4bit BMP', metavar='<arg>')
+            help='convert images to 4bit BMP format', metavar='<arg>')
     parser.add_option('-c', '--cover', action='store_true', dest='cover', default=False,
             help='convert cover to 8bit BMP instead of 4bit (used with --bmp-4)', metavar='<arg>')
     parser.add_option('-n', '--no-cover', action='store_true', dest='nocover', default=False,
             help='exclude cover', metavar='<arg>')
     parser.add_option('-B', '--bmp-8', action='store_true', dest='BMP', default=False,
-            help='convert images to 8bit BMP', metavar='<arg>')
+            help='convert images to 8bit BMP format', metavar='<arg>')
+    parser.add_option('-j', '--jpeg', action='store_true', dest='jpeg', default=False,
+            help='convert images to JPEG format', metavar='<arg>')
+    parser.add_option('-p', '--png', action='store_true', dest='png', default=False,
+            help='convert images to PNG format', metavar='<arg>')
     parser.add_option('-e', '--exclude', action='callback', dest='exclude', type='string', callback=exclude_callback,
             help='list of images to exclude (0,2,13)', metavar='<arg>')
     parser.add_option('-r', '--rar', action='store_true', dest='rar', default=False,
-            help='convert archive to rar', metavar='<arg>')
+            help='convert archive to RAR format', metavar='<arg>')
     parser.add_option('-z', '--zip', action='store_true', dest='zip', default=False,
-            help='convert archive to zip', metavar='<arg>')
+            help='convert archive to ZIP format', metavar='<arg>')
     parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=True,
             help='verbose (default)')
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
