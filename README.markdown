@@ -13,6 +13,11 @@ Only cbr and cbz archives are supported.
 
 Note: Windows users can download zip package from downloads. Package doesn't contain rar.exe, you must copy that file to comic-utils/bin/rar.exe. File can be found on http://www.rarlab.com or if you already have winrar installed you can find it in Program Files.
 
+Dependencies
+=====
+
+[ImageMagick](http://www.imagemagick.org) , [Netpbm](http://netpbm.sourceforge.net/) and [RAR](http://www.rarlab.com/)
+
 Using
 =====
 
