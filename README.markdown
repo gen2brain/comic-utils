@@ -41,6 +41,7 @@ Using
       -r, --rar                 convert archive to RAR format
       -z, --zip                 convert archive to ZIP format
       -S, --suffix              add suffix to file basename
+      -R, --recursive           process subdirectories recursively
       -v, --verbose             verbose (default)
       -Q, --quiet               quiet
 
@@ -66,8 +67,10 @@ This example will convert all images except comicbook cover to 4bit BMP image, c
       -s <arg>, --size=<arg>    thumbnail size (default 512)
       -o <arg>, --outdir=<arg>  output directory (default is ~/thumbnails/normal)
       -q <arg>, --quality=<arg> quality filter, 0 = NEAREST (default), 1 = BILINEAR, 2 = BICUBIC, 3 = ANTIALIAS
-      -f, --force               overwrite
+      -f, --force               overwrite (default)
+      -n, --no-clobber          do not overwrite existing file
       -t <arg>, --type=<arg>    type, 0 = freedesktop (default), 1 = normal
+      -R, --recursive           process subdirectories recursively
 
 Examples:
 

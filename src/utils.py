@@ -26,6 +26,13 @@ import zipfile
 import urllib
 from subprocess import Popen, PIPE
 
+from cmd import APPS
+
+REC_RE = re.compile("\d+|\D+")
+CB_RE = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
+FRONT_RE = re.compile('(cover|front)', re.IGNORECASE)
+IMG_RE = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)\s*$', re.IGNORECASE)
+
 def get_mime_type(filepath):
     try:
         if os.path.isfile(filepath):
@@ -50,9 +57,8 @@ def uri_to_file(filepath):
     """File uri to file path """
     return "%s" % urllib.unquote(filepath).replace('file://', '')
 
-def get_comics(rootpath, size=None):
+def get_comics(path_args, opts):
     comics = []
-    regex = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
 
     def get_file_info(fullpath):
         filename = os.path.basename(fullpath)
@@ -65,39 +71,57 @@ def get_comics(rootpath, size=None):
         fileuri = get_file_uri(fullpath)
         return (filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri)
 
-    if os.path.isfile(rootpath):
-        fullpath = os.path.realpath(rootpath)
-        filename = os.path.basename(fullpath)
-        filesize = os.path.getsize(fullpath)
-        if regex.match(filename):
-            if not size:
-                comics.append(get_file_info(fullpath))
-            else:
-                if filesize > size * (1024*1024):
+    alphanumeric_sort(path_args)
+    for path in path_args:
+        path = os.path.realpath(path)
+
+        if os.path.isfile(path):
+            fullpath = os.path.realpath(path)
+            filename = os.path.basename(fullpath)
+            filesize = os.path.getsize(fullpath)
+            if CB_RE.match(filename):
+                if opts.size is None:
                     comics.append(get_file_info(fullpath))
-    else:
-        for dirpath, dirnames, filenames in os.walk(rootpath):
-            alphanumeric_sort(filenames)
-            for filename in filenames:
-                if regex.match(filename):
-                    fullpath = os.path.join(dirpath, filename)
-                    filesize = os.path.getsize(fullpath)
-                    if not size:
+                else:
+                    if filesize > opts.size * (1024*1024):
                         comics.append(get_file_info(fullpath))
-                    else:
-                        if filesize > size * (1024*1024):
+
+        elif os.path.isdir(path):
+            if opts.recursive:
+                for dirpath, dirnames, filenames in os.walk(path):
+                    alphanumeric_sort(filenames)
+                    for filename in filenames:
+                        if CB_RE.match(filename):
+                            fullpath = os.path.join(dirpath, filename)
+                            filesize = os.path.getsize(fullpath)
+                            if opts.size is None:
+                                comics.append(get_file_info(fullpath))
+                            else:
+                                if filesize > opts.size * (1024*1024):
+                                    comics.append(get_file_info(fullpath))
+            else:
+                filenames = os.listdir(path)
+                alphanumeric_sort(filenames)
+                for filename in filenames:
+                    fullpath = os.path.join(path, filename)
+                    if os.path.isfile(fullpath) and CB_RE.match(filename):
+                        filesize = os.path.getsize(fullpath)
+                        if opts.size is None:
                             comics.append(get_file_info(fullpath))
+                        else:
+                            if filesize > opts.size * (1024*1024):
+                                comics.append(get_file_info(fullpath))
+
     return comics
 
 def get_images(dir):
     images = []
-    regex = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)$', re.IGNORECASE)
     try:
         for dirpath, dirnames, filenames in os.walk(dir):
             alphanumeric_sort(filenames)
             cover = guess_cover(filenames)
             for filename in filenames:
-                if regex.match(filename):
+                if IMG_RE.match(filename):
                     basename, fileext = os.path.splitext(filename)
                     fullpath = os.path.join(dirpath, filename)
                     images.append((filename, fullpath, basename, fileext, cover))
@@ -111,10 +135,8 @@ def guess_cover(files):
     the cover of an archive.
     """
     alphanumeric_sort(files)
-    ext_re = re.compile(r'\.(jpg|jpeg|png|gif|tif|tiff|bmp)\s*$', re.I)
-    front_re = re.compile('(cover|front)', re.I)
-    images = filter(ext_re.search, files)
-    candidates = filter(front_re.search, images)
+    images = filter(IMG_RE.search, files)
+    candidates = filter(FRONT_RE.search, images)
     candidates = [c for c in candidates if not 'back' in c.lower()]
     if candidates:
         return candidates[0]
@@ -131,24 +153,7 @@ def alphanumeric_sort(filenames):
         if s.isdigit():
             return int(s)
         return s.lower()
-    rec = re.compile("\d+|\D+")
-    filenames.sort(key=lambda s: map(_format_substring, rec.findall(s)))
-
-def which(prog):
-    """ Equivalent of unix which command """
-    def is_exe(fpath):
-        return os.path.exists(fpath) and os.access(fpath, os.X_OK)
-
-    fpath, fname = os.path.split(prog)
-    if fpath:
-        if is_exe(prog):
-            return prog
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            filename = os.path.join(path, prog)
-            if is_exe(filename):
-                return filename
-    return None
+    filenames.sort(key=lambda s: map(_format_substring, REC_RE.findall(s)))
 
 class Extractor:
     """Extractor is a class for extracting different archive formats.
@@ -161,25 +166,11 @@ class Extractor:
         self._files = []
 
         if self._type == 'ZIP':
-            self._zfile = zipfile.ZipFile(src, 'rb')
+            self._zfile = zipfile.ZipFile(src, 'r')
             self._files = self._zfile.namelist()
         elif self._type == 'RAR':
-            self._rar = None
-            for command in ('unrar', 'rar'):
-                if os.name == 'nt':
-                    bindir = os.path.join(sys.path[0], 'bin')
-                    cmd = os.path.join(bindir, command)
-                    if os.path.isfile("%s.exe" % cmd):
-                        self._rar = "%s.exe" % cmd
-                else:
-                    if which(command):
-                        self._rar = command
-            if self._rar == None:
-                sys.stderr.write(
-                        'Could not find the "rar" or "unrar" executable.\r\nExiting...\r\n')
-                sys.exit(1)
             proc = Popen(
-                    [self._rar, 'vb', src], stdout=PIPE)
+                    [APPS['rar'], 'vb', src], stdout=PIPE)
             fobj = proc.stdout
             self._files = fobj.readlines()
             proc.wait()
@@ -198,7 +189,8 @@ class Extractor:
             return cStringIO.StringIO(self._zfile.read(chosen))
         elif self._type == 'RAR':
             proc = Popen(
-                    [self._rar, 'p', '-inul', '-p-', '--', self._src, chosen],
+                    [APPS['rar'], 'p', '-inul', '-p-', '--',
+                        self._src, chosen],
                     stdout=PIPE, stderr=PIPE)
             fobj = proc.stdout
             return cStringIO.StringIO(fobj.read())

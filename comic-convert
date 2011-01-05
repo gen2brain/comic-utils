@@ -19,6 +19,7 @@
 
 import os
 import sys
+import glob
 import zipfile
 import tempfile
 import shutil
@@ -30,29 +31,14 @@ try:
             os.path.join(".","setup.py")):
         from src import utils
         from src.debug import log
+        from src.cmd import APPS
     else:
         from comicutils import utils
         from comicutils.debug import log
+        from comicutils.cmd import APPS
 except ImportError:
     sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
     sys.exit(1)
-
-APP = {}
-BINDIR = os.path.join(sys.path[0], 'bin')
-
-for cmd in ['rar', 'mogrify', 'convert', 'ppmtobmp']:
-    if os.name == 'nt':
-        command = os.path.join(BINDIR, cmd)
-        if os.path.isfile("%s.exe" % command):
-            APP[cmd] = command
-        else:
-            log.Error("Could not find '%s' executable." % command)
-    else:
-        command = utils.which(cmd)
-        if command:
-            APP[cmd] = command
-        else:
-            log.Error("Could not find '%s' executable." % cmd)
 
 def unpack_archive(filepath, filetype, filename):
     if filetype == 'ZIP':
@@ -67,12 +53,12 @@ def unpack_archive(filepath, filetype, filename):
     elif filetype == 'RAR':
         try:
             tempdir = tempfile.mkdtemp(filename)
-            p = Popen([APP['rar'], 'x', filepath, tempdir],
+            p = Popen([APPS['rar'], 'x', filepath, tempdir],
                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
             out = p.communicate()
             p.wait()
             if out[1] != '':
-                sys.stderr.write('Error extracting %s file %s: %s' % (
+                log.Warn('Error extracting %s file %s: %s' % (
                     filetype, filepath, out[1]))
             else:
                 return tempdir
@@ -100,7 +86,7 @@ def pack_archive(tempdir, filetype, filepath):
                 filetype, basename, str(err)))
     elif filetype == 'RAR':
         try:
-            p = Popen([APP['rar'], 'a', '-r', filepath, '*'],
+            p = Popen([APPS['rar'], 'a', '-r', filepath, '*'],
                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
             out = p.communicate()
             p.wait()
@@ -116,7 +102,7 @@ def pack_archive(tempdir, filetype, filepath):
     return False
 
 def image_scale(fullpath, opts):
-    p = Popen([APP['mogrify'], '-quality', str(opts.quality),
+    p = Popen([APPS['mogrify'], '-quality', str(opts.quality),
         '-scale', str(opts.scale), fullpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
@@ -135,11 +121,11 @@ def image_bmp(file, opts):
     elif opts.bmp:
         depth, colors = 4, 16
     try:
-        convert = Popen([APP['convert'], fullpath, '+matte',
+        convert = Popen([APPS['convert'], fullpath, '+matte',
             '-scale', str(opts.scale),
             '-depth', str(depth), '-colors', str(colors), 'ppm:-'],
                 stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        bmp = Popen([APP['ppmtobmp'], '-bpp', str(depth)],
+        bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
                 stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
         lines = bmp.stdout.readlines()
         if len(lines) > 0:
@@ -159,7 +145,7 @@ def image_jpeg(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.jpg' % basename)
-    p = Popen([APP['convert'], fullpath, '-quality', str(opts.quality),
+    p = Popen([APPS['convert'], fullpath, '-quality', str(opts.quality),
         '-scale', str(opts.scale), newpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
@@ -175,7 +161,7 @@ def image_png(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.png' % basename)
-    p = Popen([APP['convert'], fullpath, '-quality', str(opts.quality),
+    p = Popen([APPS['convert'], fullpath, '-quality', str(opts.quality),
         '-scale', str(opts.scale), newpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
@@ -219,14 +205,14 @@ def convert_images(tempdir, opts):
 def exclude_callback(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
-def main(rootpath, opts):
+def main(args, opts):
     if opts.outdir:
         if not os.path.isdir(opts.outdir):
             log.Error('Error: %s is not a directory' % (opts.outdir))
 
     try:
         filenum = 1
-        comics = utils.get_comics(rootpath, opts.size)
+        comics = utils.get_comics(args, opts)
         total = len(comics)
 
         for file in comics:
@@ -275,11 +261,12 @@ def main(rootpath, opts):
                         shutil.rmtree(tempdir)
             filenum += 1
     except KeyboardInterrupt:
-        pass
-    except Exception, err:
         if tempdir:
             shutil.rmtree(tempdir)
+    except Exception, err:
         log.Error('Error: %s %s' % (str(type(err)), str(err)))
+        if tempdir:
+            shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
     usage = 'usage: %prog <options> <file or dir>'
@@ -312,6 +299,8 @@ if __name__ == '__main__':
             help='convert archive to ZIP format', metavar='<arg>')
     parser.add_option('-S', '--suffix', action='store', dest='suffix', type='string', default='',
             help='add suffix to file basename', metavar='<arg>')
+    parser.add_option('-R', '--recursive', action='store_true', dest='recursive', default=False,
+            help='process subdirectories recursively', metavar='<arg>')
     parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=True,
             help='verbose (default)')
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
@@ -319,9 +308,13 @@ if __name__ == '__main__':
     (opts, args) = parser.parse_args()
 
     try:
-        rootpath = os.path.realpath(args[0])
-    except:
+        path_args = sum(map(glob.glob, args),[])
+        if not path_args:
+            parser.print_help()
+            sys.stderr.write('\nNo such file or directory\n')
+            sys.exit(1)
+    except Exception:
         parser.print_help()
         sys.exit(1)
 
-    main(rootpath, opts)
+    main(path_args, opts)

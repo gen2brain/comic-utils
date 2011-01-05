@@ -19,8 +19,9 @@
 
 import os
 import sys
-from optparse import OptionParser
+import glob
 from hashlib import md5
+from optparse import OptionParser
 
 try:
     import Image
@@ -62,13 +63,8 @@ def create_thumbnail(outpath, file, opts):
     cover = utils.guess_cover(files)
     imfilter = filter_quality(opts.quality)
 
-    try:
-        fd = extractor.extract(cover)
-        im = Image.open(fd)
-        im.verify()
-    except Exception:
-        log.Error("Cannot identify image file")
-
+    fd = extractor.extract(cover)
+    im = Image.open(fd)
     if im.size[0] > im.size[1]:
         x = opts.size
         y = opts.size * im.size[1] / im.size[0]
@@ -95,7 +91,7 @@ def get_thumb_path(file, outpath, type):
     thumbpath = os.path.join(outpath, thumbname)
     return thumbpath
 
-def main(path, opts):
+def main(args, opts):
     if opts.outpath:
         if os.path.isdir(opts.outpath):
             outpath = os.path.realpath(opts.outpath)
@@ -107,22 +103,25 @@ def main(path, opts):
             os.makedirs(outpath)
 
     try:
-        comics = utils.get_comics(path)
+        comics = utils.get_comics(args, opts)
         for file in comics:
             filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
             if not opts.overwrite:
                 thumbpath = get_thumb_path(file, outpath, opts.type)
-                if os.path.exists(thumbpath) and opts.type != 1:
+                if os.path.exists(thumbpath):
                     pim = Image.open(thumbpath)
                     if int(filemtime) != int(pim.info['Thumb::MTime']):
                         pass
                     else:
                         continue
+                else:
+                    pass
             create_thumbnail(outpath, file, opts)
     except KeyboardInterrupt:
         pass
     except Exception, err:
         log.Error('Error: %s %s' % (str(type(err)), str(err)))
+    sys.exit(0)
 
 if __name__ == '__main__':
     usage = 'usage: %prog <options> <file or dir>'
@@ -133,20 +132,24 @@ if __name__ == '__main__':
             help='output directory (default is ~/thumbnails/normal)', metavar='<arg>')
     parser.add_option('-q', '--quality', action='store', dest='quality', type='int', default=0,
             help='quality filter, 0 = NEAREST (default), 1 = BILINEAR, 2 = BICUBIC, 3 = ANTIALIAS', metavar='<arg>')
-    parser.add_option('-f', '--force', action='store_true', dest='overwrite', default=False,
+    parser.add_option('-f', '--force', action='store_true', dest='overwrite', default=True,
             help='overwrite', metavar='<arg>')
+    parser.add_option('-n', '--no-clobber', action='store_false', dest='overwrite',
+            help='do not overwrite existing file', metavar='<arg>')
     parser.add_option('-t', '--type', action='store', dest='type', type='int', default=0,
             help='type, 0 = freedesktop (default), 1 = normal', metavar='<arg>')
+    parser.add_option('-R', '--recursive', action='store_true', dest='recursive', default=False,
+            help='process subdirectories recursively', metavar='<arg>')
     (opts, args) = parser.parse_args()
 
     try:
-        path = os.environ['NAUTILUS_SCRIPT_CURRENT_URI']
-        path = utils.uri_to_file(path)
+        path_args = []
+        uri = os.environ['NAUTILUS_SCRIPT_CURRENT_URI']
+        path_args.append(utils.uri_to_file(uri))
     except Exception:
-        try:
-            path = os.path.realpath(args[0])
-        except Exception:
+        path_args = sum(map(glob.glob, args),[])
+        if not path_args:
             parser.print_help()
             sys.exit(1)
 
-    main(path, opts)
+    main(path_args, opts)

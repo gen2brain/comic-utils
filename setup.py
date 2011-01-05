@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import glob
 from distutils.core import setup
 
 setup(name = "comic-utils",
-        version = "0.1",
+        version = "0.2",
         description = "Comic Utils",
         author = "Milan Nikolic",
         author_email = "gen2brain@gmail.com",
