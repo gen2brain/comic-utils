@@ -11,6 +11,8 @@ This is a simple tool for editing [comic book archives](http://en.wikipedia.org/
 Included are scripts that I use daily to rescale/convert images in archives, convert cbr to cbz and to create thumbnails by [freedesktop](http://www.freedesktop.org/wiki/) standards to be used in file managers.
 Only cbr and cbz archives are supported.
 
+Note: Windows users can download zip package from downloads. Package doesn't contain rar.exe, you must copy that file to comic-utils/bin/rar.exe. File can be found on http://www.rarlab.com or if you already have winrar installed you can find it in Program Files.
+
 Using
 =====
 
@@ -44,7 +46,7 @@ This example will rescale images to 1200px for all comic archive files in direct
 
 This example will convert all images except comicbook cover to 4bit BMP image, cover will be 8bit BMP in 256 colors. Also, archive is converted to zip format so you get as a result .cbz file in _converted directory.
 
-[BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is lossless format, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
+[BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is uncompressed, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
 
 
 #### comic-thumbnails
