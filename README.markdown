@@ -35,6 +35,7 @@ Using
       -e <arg>, --exclude=<arg> list of images to exclude (0,2,13)
       -r, --rar                 convert archive to RAR format
       -z, --zip                 convert archive to ZIP format
+      -S, --suffix              add suffix to file basename
       -v, --verbose             verbose (default)
       -Q, --quiet               quiet
 

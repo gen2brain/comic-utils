@@ -256,6 +256,10 @@ def main(rootpath, opts):
                     if opts.verbose:
                         sys.stderr.write('Packing... \r')
 
+                    if opts.suffix:
+                        basename = '%s%s' % (basename, opts.suffix)
+                        filename = '%s%s' % (basename, fileext)
+
                     if opts.rar:
                         filetype = 'RAR'
                         filename = '%s.cbr' % basename
@@ -306,6 +310,8 @@ if __name__ == '__main__':
             help='convert archive to RAR format', metavar='<arg>')
     parser.add_option('-z', '--zip', action='store_true', dest='zip', default=False,
             help='convert archive to ZIP format', metavar='<arg>')
+    parser.add_option('-S', '--suffix', action='store', dest='suffix', type='string', default='',
+            help='add suffix to file basename', metavar='<arg>')
     parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=True,
             help='verbose (default)')
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
