@@ -47,7 +47,7 @@ Using
 
 Examples:
 
-    comic-convert --scale 1200 --size 60 /mnt/media/comics/BradBarron/
+    comic-convert --recursive --scale 1200 --size 60 /mnt/media/comics/BradBarron/
 
 This example will rescale images to 1200px for all comic archive files in directory with size larger then 60MB. You can also use percents for --scale, for example 80%.
 
