@@ -43,10 +43,11 @@ def get_mime_type(filepath):
     return None
 
 def get_file_uri(filepath):
-    """Return file path uri"""
+    """Returns file path uri"""
     return "%s%s" % ('file://', urllib.quote(filepath, safe="%/:=&?~+!$,;'@()*"))
 
 def uri_to_file(filepath):
+    """File uri to file path """
     return "%s" % urllib.unquote(filepath).replace('file://', '')
 
 def get_comics(rootpath, size=None):
@@ -69,11 +70,11 @@ def get_comics(rootpath, size=None):
         filename = os.path.basename(fullpath)
         filesize = os.path.getsize(fullpath)
         if regex.match(filename):
-            if size:
+            if not size:
+                comics.append(get_file_info(fullpath))
+            else:
                 if filesize > size * (1024*1024):
                     comics.append(get_file_info(fullpath))
-            else:
-                comics.append(get_file_info(fullpath))
     else:
         for dirpath, dirnames, filenames in os.walk(rootpath):
             alphanumeric_sort(filenames)
@@ -81,12 +82,29 @@ def get_comics(rootpath, size=None):
                 if regex.match(filename):
                     fullpath = os.path.join(dirpath, filename)
                     filesize = os.path.getsize(fullpath)
-                    if size:
+                    if not size:
+                        comics.append(get_file_info(fullpath))
+                    else:
                         if filesize > size * (1024*1024):
                             comics.append(get_file_info(fullpath))
-                    else:
-                        comics.append(get_file_info(fullpath))
     return comics
+
+def get_images(dir):
+    images = []
+    regex = re.compile(r'^.*\.(jpg|jpeg|jpe|png|bmp|tiff)$', re.IGNORECASE)
+    try:
+        for dirpath, dirnames, filenames in os.walk(dir):
+            alphanumeric_sort(filenames)
+            cover = guess_cover(filenames)
+            for filename in filenames:
+                if regex.match(filename):
+                    basename, fileext = os.path.splitext(filename)
+                    fullpath = os.path.join(dirpath, filename)
+                    images.append((filename, fullpath, basename, fileext, cover))
+        return images
+    except Exception, err:
+        sys.stderr.write('Error: %s\n' % str(err))
+        return None
 
 def guess_cover(files):
     """Returns the filename within <files> that is the most likely to be

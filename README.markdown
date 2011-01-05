@@ -1,7 +1,7 @@
 Comic Utils
 ===========
 
-Author: Milan Nikolic 
+Author: Milan Nikolic
 License: GPL-3
 
 Introduction
@@ -21,11 +21,12 @@ Using
     Options:
       -h, --help                show this help message and exit
       -s <arg>, --scale=<arg>   image geometry (default 100%)
-      -q <arg>, --quality=<arg> image quality (default 80, used with -s)
+      -q <arg>, --quality=<arg> image quality (default 80, used with --scale)
       -o <arg>, --outdir=<arg>  output directory (default is _converted in proccesed directory)
       -m <arg>, --size=<arg>    process only files larger then size (in MB)
       -b, --bmp-4               convert images to 4bit BMP
-      -c, --cover               convert cover to 8bit instead of 4bit (used with -b)
+      -c, --cover               convert cover to 8bit BMP instead of 4bit (used with --bmp-4)
+      -n, --no-cover            exclude cover
       -B, --bmp-8               convert images to 8bit BMP
       -e <arg>, --exclude=<arg> list of exclude files (0,2,13)
       -r, --rar                 convert archive to rar
