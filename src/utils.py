@@ -57,7 +57,7 @@ def uri_to_file(filepath):
     """File uri to file path """
     return "%s" % urllib.unquote(filepath).replace('file://', '')
 
-def get_comics(path_args, opts):
+def get_comics(path_args, opts, size=None):
     comics = []
 
     def get_file_info(fullpath):
@@ -80,10 +80,10 @@ def get_comics(path_args, opts):
             filename = os.path.basename(fullpath)
             filesize = os.path.getsize(fullpath)
             if CB_RE.match(filename):
-                if opts.size is None:
+                if size is None:
                     comics.append(get_file_info(fullpath))
                 else:
-                    if filesize > opts.size * (1024*1024):
+                    if filesize > size * (1024*1024):
                         comics.append(get_file_info(fullpath))
 
         elif os.path.isdir(path):
@@ -94,10 +94,10 @@ def get_comics(path_args, opts):
                         if CB_RE.match(filename):
                             fullpath = os.path.join(dirpath, filename)
                             filesize = os.path.getsize(fullpath)
-                            if opts.size is None:
+                            if size is None:
                                 comics.append(get_file_info(fullpath))
                             else:
-                                if filesize > opts.size * (1024*1024):
+                                if filesize > size * (1024*1024):
                                     comics.append(get_file_info(fullpath))
             else:
                 filenames = os.listdir(path)
@@ -106,10 +106,10 @@ def get_comics(path_args, opts):
                     fullpath = os.path.join(path, filename)
                     if os.path.isfile(fullpath) and CB_RE.match(filename):
                         filesize = os.path.getsize(fullpath)
-                        if opts.size is None:
+                        if size is None:
                             comics.append(get_file_info(fullpath))
                         else:
-                            if filesize > opts.size * (1024*1024):
+                            if filesize > size * (1024*1024):
                                 comics.append(get_file_info(fullpath))
 
     return comics

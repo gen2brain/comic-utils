@@ -212,7 +212,7 @@ def main(args, opts):
 
     try:
         filenum = 1
-        comics = utils.get_comics(args, opts)
+        comics = utils.get_comics(args, opts, opts.size)
         total = len(comics)
 
         for file in comics:
