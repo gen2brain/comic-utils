@@ -34,3 +34,4 @@ for cmd in ['rar', 'mogrify', 'convert', 'identify', 'ppmtobmp']:
             APPS[cmd] = command
         else:
             sys.stderr.write("Could not find '%s' executable\n" % cmd)
+            sys.exit(1)
