@@ -21,12 +21,8 @@
 import os
 import sys
 import re
-import cStringIO
 import zipfile
 import urllib
-from subprocess import Popen, PIPE
-
-from cmd import APPS
 
 REC_RE = re.compile("\d+|\D+")
 CB_RE = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
@@ -154,43 +150,3 @@ def alphanumeric_sort(filenames):
             return int(s)
         return s.lower()
     filenames.sort(key=lambda s: map(_format_substring, REC_RE.findall(s)))
-
-class Extractor:
-    """Extractor is a class for extracting different archive formats.
-    This is a much simplified version of the Extractor class from Comix.
-    """
-    def __init__(self, src):
-        """Setup the extractor with archive <src>."""
-        self._src = src
-        self._type = get_mime_type(src)
-        self._files = []
-
-        if self._type == 'ZIP':
-            self._zfile = zipfile.ZipFile(src, 'r')
-            self._files = self._zfile.namelist()
-        elif self._type == 'RAR':
-            proc = Popen(
-                    [APPS['rar'], 'vb', src], stdout=PIPE)
-            fobj = proc.stdout
-            self._files = fobj.readlines()
-            proc.wait()
-            self._files = [name.rstrip('\n') for name in self._files]
-
-    def get_files(self):
-        """Return a list of the files in the archive."""
-        return self._files
-
-    def extract(self, chosen):
-        """Extract the file <chosen> and return it as a cStringIO.StringIO
-        object. The <chosen> file must be one of the files in the list
-        returned by the get_files() method.
-        """
-        if self._type == 'ZIP':
-            return cStringIO.StringIO(self._zfile.read(chosen))
-        elif self._type == 'RAR':
-            proc = Popen(
-                    [APPS['rar'], 'p', '-inul', '-p-', '--',
-                        self._src, chosen],
-                    stdout=PIPE, stderr=PIPE)
-            fobj = proc.stdout
-            return cStringIO.StringIO(fobj.read())
