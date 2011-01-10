@@ -20,8 +20,13 @@
 import os
 import sys
 import glob
+import zipfile
+import cStringIO
 from hashlib import md5
 from optparse import OptionParser
+from subprocess import Popen, PIPE
+
+from cmd import APPS
 
 try:
     import Image
@@ -31,16 +36,51 @@ except ImportError:
     sys.exit(1)
 
 try:
-    if os.path.isdir(os.path.join(".","src")) and os.path.isfile(
-            os.path.join(".","setup.py")):
-        from src import utils
-        from src.debug import log
-    else:
-        from comicutils import utils
-        from comicutils.debug import log
+    from comicutils import utils
+    from comicutils.debug import log
 except ImportError:
     sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
     sys.exit(1)
+
+class Extractor:
+    """Extractor is a class for extracting different archive formats.
+    This is a much simplified version of the Extractor class from Comix.
+    """
+    def __init__(self, src):
+        """Setup the extractor with archive <src>."""
+        self._src = src
+        self._type = utils.get_mime_type(src)
+        self._files = []
+
+        if self._type == 'ZIP':
+            self._zfile = zipfile.ZipFile(src, 'r')
+            self._files = self._zfile.namelist()
+        elif self._type == 'RAR':
+            proc = Popen(
+                    [APPS['rar'], 'vb', src], stdout=PIPE)
+            fobj = proc.stdout
+            self._files = fobj.readlines()
+            proc.wait()
+            self._files = [name.rstrip('\n') for name in self._files]
+
+    def get_files(self):
+        """Return a list of the files in the archive."""
+        return self._files
+
+    def extract(self, chosen):
+        """Extract the file <chosen> and return it as a cStringIO.StringIO
+        object. The <chosen> file must be one of the files in the list
+        returned by the get_files() method.
+        """
+        if self._type == 'ZIP':
+            return cStringIO.StringIO(self._zfile.read(chosen))
+        elif self._type == 'RAR':
+            proc = Popen(
+                    [APPS['rar'], 'p', '-inul', '-p-', '--',
+                        self._src, chosen],
+                    stdout=PIPE, stderr=PIPE)
+            fobj = proc.stdout
+            return cStringIO.StringIO(fobj.read())
 
 def filter_quality(quality):
     if quality == 0:

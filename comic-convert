@@ -27,15 +27,9 @@ from subprocess import Popen, PIPE
 from optparse import OptionParser
 
 try:
-    if os.path.isdir(os.path.join(".","src")) and os.path.isfile(
-            os.path.join(".","setup.py")):
-        from src import utils
-        from src.debug import log
-        from src.cmd import APPS
-    else:
-        from comicutils import utils
-        from comicutils.debug import log
-        from comicutils.cmd import APPS
+    from comicutils import utils
+    from comicutils.debug import log
+    from comicutils.cmd import APPS
 except ImportError:
     sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
     sys.exit(1)
@@ -311,7 +305,7 @@ if __name__ == '__main__':
         path_args = sum(map(glob.glob, args),[])
         if not path_args:
             parser.print_help()
-            sys.stderr.write('\nNo such file or directory\n')
+            sys.stderr.write('\nNo such file or directory\n\n')
             sys.exit(1)
     except Exception:
         parser.print_help()
