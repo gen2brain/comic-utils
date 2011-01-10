@@ -50,7 +50,6 @@ def unpack_archive(filepath, filetype, filename):
             p = Popen([APPS['rar'], 'x', filepath, tempdir],
                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
             out = p.communicate()
-            p.wait()
             if out[1] != '':
                 log.Warn('Error extracting %s file %s: %s' % (
                     filetype, filepath, out[1]))
@@ -83,7 +82,6 @@ def pack_archive(tempdir, filetype, filepath):
             p = Popen([APPS['rar'], 'a', '-r', filepath, '*'],
                     stdin=PIPE, stdout=PIPE, stderr=PIPE)
             out = p.communicate()
-            p.wait()
             if out[1] != '':
                 log.Warn('Error packing %s file %s: %s' % (
                     filetype, basename, out[1]))
@@ -100,7 +98,6 @@ def image_scale(fullpath, opts):
         '-scale', str(opts.scale), fullpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
-    p.wait()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
         return False
@@ -121,12 +118,17 @@ def image_bmp(file, opts):
                 stdin=PIPE, stdout=PIPE, stderr=PIPE)
         bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
                 stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
-        lines = bmp.stdout.readlines()
-        if len(lines) > 0:
+        stdout, stderr = bmp.communicate()
+        #cmd = '%s "%s" +matte -scale %s -depth %s -colors %s ppm:- | %s -bpp %s' % (
+            #APPS['convert'], fullpath, str(opts.scale),
+            #str(depth), str(colors), APPS['ppmtobmp'], str(depth))
+        #convert = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
+        #stdout, stderr = convert.communicate()
+        if len(stdout) > 0:
             newpath = os.path.join(
                     os.path.dirname(fullpath), '%s.bmp' % basename)
             newfile = open(newpath, 'w')
-            newfile.writelines(lines)
+            newfile.writelines(stdout)
             newfile.close()
             if fileext.lower() != '.bmp':
                 os.unlink(fullpath)
@@ -143,7 +145,6 @@ def image_jpeg(file, opts):
         '-scale', str(opts.scale), newpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
-    p.wait()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
         return False
@@ -159,7 +160,6 @@ def image_png(file, opts):
         '-scale', str(opts.scale), newpath],
             stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
-    p.wait()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
         return False
@@ -237,8 +237,8 @@ def main(args, opts):
                         sys.stderr.write('Packing... \r')
 
                     if opts.suffix:
-                        basename = '%s%s' % (basename, opts.suffix)
-                        filename = '%s%s' % (basename, fileext)
+                        basename = basename + opts.suffix
+                        filename = basename + fileext
 
                     if opts.rar:
                         filetype = 'RAR'
