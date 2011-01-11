@@ -38,6 +38,7 @@ Using
       -j, --jpeg                convert images to JPEG format
       -p, --png                 convert images to PNG format
       -e <arg>, --exclude=<arg> list of images to exclude (0,2,13)
+      -g, --no-rgb              exclude images with RGB colorspace
       -r, --rar                 convert archive to RAR format
       -z, --zip                 convert archive to ZIP format
       -S, --suffix              add suffix to file basename
