@@ -93,6 +93,15 @@ def pack_archive(tempdir, filetype, filepath):
                 filetype, basename, str(err)))
     return False
 
+def image_color(filepath):
+    p = Popen([APPS['identify'], '-format', '%[colorspace]', filepath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    stdout, stderr = p.communicate()
+    if stderr != '':
+        log.Warn('Error identifying file %s: %s\n' % (filepath, stderr.strip()))
+        return False
+    return stdout.strip()
+
 def image_scale(fullpath, opts):
     p = Popen([APPS['mogrify'], '-quality', str(opts.quality),
         '-scale', str(opts.scale), fullpath],
@@ -169,9 +178,12 @@ def convert_images(tempdir, opts):
     try:
         for filenum, file in enumerate(images):
             filename, fullpath, basename, fileext, cover = file
+
             if str(filenum) in exclude:
                 continue
             if opts.nocover and filename == cover:
+                continue
+            if opts.norgb and image_color(fullpath) == 'RGB':
                 continue
 
             if opts.bmp or opts.BMP:
@@ -282,6 +294,8 @@ if __name__ == '__main__':
             help='convert images to PNG format', metavar='<arg>')
     parser.add_option('-e', '--exclude', action='callback', dest='exclude', type='string', callback=exclude_callback,
             help='list of images to exclude (0,2,13)', metavar='<arg>')
+    parser.add_option('-g', '--no-rgb', action='store_true', dest='norgb', default=False,
+            help='exclude images with RGB colorspace', metavar='<arg>')
     parser.add_option('-r', '--rar', action='store_true', dest='rar', default=False,
             help='convert archive to RAR format', metavar='<arg>')
     parser.add_option('-z', '--zip', action='store_true', dest='zip', default=False,
