@@ -59,7 +59,6 @@ def get_comics(path_args, opts, size=None):
     def get_file_info(fullpath):
         filename = os.path.basename(fullpath)
         basename, fileext = os.path.splitext(filename)
-        head, tail = os.path.split(fullpath)
         filedir = os.path.dirname(fullpath)
         filetype = get_mime_type(fullpath)
         filesize = os.path.getsize(fullpath)

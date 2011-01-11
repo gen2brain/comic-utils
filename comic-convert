@@ -119,16 +119,11 @@ def image_bmp(file, opts):
         bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
                 stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
         stdout, stderr = bmp.communicate()
-        #cmd = '%s "%s" +matte -scale %s -depth %s -colors %s ppm:- | %s -bpp %s' % (
-            #APPS['convert'], fullpath, str(opts.scale),
-            #str(depth), str(colors), APPS['ppmtobmp'], str(depth))
-        #convert = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=True)
-        #stdout, stderr = convert.communicate()
         if len(stdout) > 0:
             newpath = os.path.join(
                     os.path.dirname(fullpath), '%s.bmp' % basename)
-            newfile = open(newpath, 'w')
-            newfile.writelines(stdout)
+            newfile = open(newpath, 'wb')
+            newfile.write(stdout)
             newfile.close()
             if fileext.lower() != '.bmp':
                 os.unlink(fullpath)
