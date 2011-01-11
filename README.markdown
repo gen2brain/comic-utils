@@ -77,11 +77,11 @@ Examples:
     comic-thumbnails --quality=3 --force /mnt/media/comics
 
 This example will generate thumbnails by freedesktop standards in ~/.thumbnails/normal directory for whole comics collection.
-Thumbnails will be 512px but since Gnome nautilus doesn't care about large directory we put those in normal so we can have nice and large thumbnails when we zoom in. Once comic-utils are installed you can make symlink like this.
+Thumbnails will be 512px but since Gnome nautilus doesn't care about large directory we put those in normal so we can have nice and large thumbnails when we zoom in. Once comic-utils are installed you can make symlink like this:
 
     ln -s /usr/bin/comics-thumbnails ~/.gnome2/nautilus-scripts/comics-thumbnails
 
-And have script available on right click in nautilus. Down side to this is that after thumbnails are created you have to reload nautilus, it's not possible to do that from script.
+and have script available on right click in nautilus. Downside to this is that after thumbnails are created you have to reload nautilus, it's not possible to do that from script.
 For XFCE Thunar file manager you can create [custom action](http://thunar.xfce.org/plugins.html#thunar-uca) .
 
     comic-thumbnails -t 1 -o /tmp/thumbs
