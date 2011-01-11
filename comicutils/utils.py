@@ -30,6 +30,7 @@ FRONT_RE = re.compile('(cover|front)', re.IGNORECASE)
 IMG_RE = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)\s*$', re.IGNORECASE)
 
 def get_mime_type(filepath):
+    """Returns mime type of archive file"""
     try:
         if os.path.isfile(filepath):
             if not os.access(filepath, os.R_OK):
@@ -50,10 +51,11 @@ def get_file_uri(filepath):
     return "%s%s" % ('file://', urllib.quote(filepath, safe="%/:=&?~+!$,;'@()*"))
 
 def uri_to_file(filepath):
-    """File uri to file path """
+    """Convert file uri to file path """
     return "%s" % urllib.unquote(filepath).replace('file://', '')
 
 def get_comics(path_args, opts, size=None):
+    """Returns list of comic archives for given path arguments"""
     comics = []
 
     def get_file_info(fullpath):
@@ -110,6 +112,7 @@ def get_comics(path_args, opts, size=None):
     return comics
 
 def get_images(dir):
+    """Returns list of images within archive"""
     images = []
     try:
         for dirpath, dirnames, filenames in os.walk(dir):
