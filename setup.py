@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name = "comic-utils",
-        version = "0.2",
+        version = "0.3",
         description = "Comic Utils",
         author = "Milan Nikolic",
         author_email = "gen2brain@gmail.com",
