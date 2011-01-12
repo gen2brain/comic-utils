@@ -26,8 +26,6 @@ from hashlib import md5
 from optparse import OptionParser
 from subprocess import Popen, PIPE
 
-from cmd import APPS
-
 try:
     import Image
     import PngImagePlugin
@@ -38,6 +36,7 @@ except ImportError:
 try:
     from comicutils import utils
     from comicutils.debug import log
+    from comicutils.cmd import APPS
 except ImportError:
     sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
     sys.exit(1)
@@ -98,7 +97,7 @@ def filter_quality(quality):
 def create_thumbnail(outpath, file, opts):
     filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
     thumbpath = get_thumb_path(file, outpath, opts.type)
-    extractor = utils.Extractor(fullpath)
+    extractor = Extractor(fullpath)
     files = extractor.get_files()
     cover = utils.guess_cover(files)
     imfilter = filter_quality(opts.quality)
