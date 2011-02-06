@@ -28,7 +28,8 @@ Using
     Options:
       -h, --help                show this help message and exit
       -s <arg>, --scale=<arg>   image geometry (default 100%)
-      -q <arg>, --quality=<arg> image quality (default 75, used with --jpeg, --png and --scale)
+      -q <arg>, --quality=<arg> image quality (default 75)
+      -l <arg>, --level=<arg>   adjust the level of image contrast
       -o <arg>, --outdir=<arg>  output directory (default is _converted in proccesed directory)
       -m <arg>, --size=<arg>    process only files larger then size (in MB)
       -b, --bmp-4               convert images to 4bit BMP format

@@ -103,9 +103,18 @@ def image_color(filepath):
     return stdout.strip()
 
 def image_scale(fullpath, opts):
-    p = Popen([APPS['mogrify'], '-quality', str(opts.quality),
-        '-scale', str(opts.scale), fullpath],
-            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    command = [APPS['mogrify'], '-quality', str(opts.quality),
+            '-scale', str(opts.scale), fullpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    return True
+
+def image_level(fullpath, opts):
+    command = [APPS['mogrify'], '-level', str(opts.level), fullpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -120,11 +129,13 @@ def image_bmp(file, opts):
         depth, colors = 8, 256
     elif opts.bmp:
         depth, colors = 4, 16
+
+    command = [APPS['convert'], fullpath, '+matte',
+            '-depth', str(depth),
+            '-colors', str(colors),
+            'ppm:-']
     try:
-        convert = Popen([APPS['convert'], fullpath, '+matte',
-            '-scale', str(opts.scale),
-            '-depth', str(depth), '-colors', str(colors), 'ppm:-'],
-                stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        convert = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
                 stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
         stdout, stderr = bmp.communicate()
@@ -145,9 +156,9 @@ def image_jpeg(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.jpg' % basename)
-    p = Popen([APPS['convert'], fullpath, '-quality', str(opts.quality),
-        '-scale', str(opts.scale), newpath],
-            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
+    command = [APPS['convert'], fullpath, newpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -160,9 +171,9 @@ def image_png(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.png' % basename)
-    p = Popen([APPS['convert'], fullpath, '-quality', str(opts.quality),
-        '-scale', str(opts.scale), newpath],
-            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
+    command = [APPS['convert'], fullpath, newpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -179,6 +190,12 @@ def convert_images(tempdir, opts):
         for filenum, file in enumerate(images):
             filename, fullpath, basename, fileext, cover = file
 
+            if opts.scale != '100%' or opts.quality != '75':
+                image_scale(fullpath, opts)
+
+            if opts.level:
+                image_level(fullpath, opts)
+
             if str(filenum) in exclude:
                 continue
             if opts.nocover and filename == cover:
@@ -192,8 +209,6 @@ def convert_images(tempdir, opts):
                 image_jpeg(file, opts)
             elif opts.png:
                 image_png(file, opts)
-            elif opts.scale != '100%' or opts.quality != '75':
-                image_scale(fullpath, opts)
 
             if opts.verbose:
                 percent = float(filenum) / float(maxrecords) * 100
@@ -226,6 +241,15 @@ def main(args, opts):
 
             if opts.verbose:
                 sys.stderr.write('File %d of %d\n' % (filenum, total))
+
+            if os.path.isfile(os.path.join(convdir, filename)):
+                if opts.verbose:
+                    sys.stderr.write('Skipping %s archive, file %s exists in output dir\n\n' % (
+                        filetype, filename))
+                filenum += 1
+                continue
+
+            if opts.verbose:
                 sys.stderr.write('Proccessing %s archive %s (%sMB)\n' % (
                     filetype, fullpath, filesize/(1024*1024)))
                 sys.stderr.write('Unpacking...\r')
@@ -275,7 +299,9 @@ if __name__ == '__main__':
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
     parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='75',
-            help='image quality (default %default, used with --jpeg, --png and --scale)', metavar='<arg>')
+            help='image quality (default %default)', metavar='<arg>')
+    parser.add_option('-l', '--level', action='store', dest='level', type='string', default=None,
+            help='adjust the level of image contrast', metavar='<arg>')
     parser.add_option('-o', '--outdir', action='store', dest='outdir', type='string', default=None,
             help='output directory (default is _converted in proccesed directory)', metavar='<arg>')
     parser.add_option('-m', '--size', action='store', dest='size', type='int', default=None,
