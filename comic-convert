@@ -149,14 +149,12 @@ def image_bmp(file, opts):
                 os.unlink(fullpath)
         return True
     except OSError:
-        newfile.close()
         return False
 
 def image_jpeg(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.jpg' % basename)
-
     command = [APPS['convert'], fullpath, newpath]
     p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
@@ -171,7 +169,6 @@ def image_png(file, opts):
     filename, fullpath, basename, fileext, cover = file
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.png' % basename)
-
     command = [APPS['convert'], fullpath, newpath]
     p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     out = p.communicate()
