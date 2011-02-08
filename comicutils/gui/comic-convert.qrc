@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="res">
+    <file>stripzona.gif</file>
+    <file>alanford.png</file>
+  </qresource>
+</RCC>
