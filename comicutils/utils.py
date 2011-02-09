@@ -23,6 +23,7 @@ import sys
 import re
 import zipfile
 import urllib
+import math
 
 REC_RE = re.compile("\d+|\D+")
 CB_RE = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
@@ -152,3 +153,16 @@ def alphanumeric_sort(filenames):
             return int(s)
         return s.lower()
     filenames.sort(key=lambda s: map(_format_substring, REC_RE.findall(s)))
+
+def filesizeformat(bytes, precision=2):
+    """Returns a humanized string for a given amount of bytes"""
+    bytes = int(bytes)
+    if bytes is 0:
+        return '0B'
+    log = math.floor(math.log(bytes, 1024))
+    return "%.*f%s" % (
+        precision,
+        bytes / math.pow(1024, log),
+        ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+        [int(log)]
+    )

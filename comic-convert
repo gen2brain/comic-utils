@@ -187,11 +187,12 @@ def convert_images(tempdir, opts):
         for filenum, file in enumerate(images):
             filename, fullpath, basename, fileext, cover = file
 
-            if opts.scale != '100%' or opts.quality != '75':
+            if opts.scale != '100%' or opts.quality != '85':
                 image_scale(fullpath, opts)
 
             if opts.level:
-                image_level(fullpath, opts)
+                if image_color(fullpath) != 'RGB':
+                    image_level(fullpath, opts)
 
             if str(filenum) in exclude:
                 continue
@@ -295,7 +296,7 @@ if __name__ == '__main__':
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
-    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='75',
+    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='85',
             help='image quality (default %default)', metavar='<arg>')
     parser.add_option('-l', '--level', action='store', dest='level', type='string', default=None,
             help='adjust the level of image contrast', metavar='<arg>')
