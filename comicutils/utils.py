@@ -22,8 +22,17 @@ import os
 import sys
 import re
 import zipfile
+import tempfile
 import urllib
 import math
+from subprocess import Popen, PIPE
+
+try:
+    from debug import log
+    from cmd import APPS
+except ImportError:
+    sys.stderr.write("Can't import comicutils module\r\nExiting...\r\n")
+    sys.exit(1)
 
 REC_RE = re.compile("\d+|\D+")
 CB_RE = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
@@ -85,7 +94,7 @@ def get_comics(path_args, opts, size=None):
                         comics.append(get_file_info(fullpath))
 
         elif os.path.isdir(path):
-            if opts.recursive:
+            if opts['recursive']:
                 for dirpath, dirnames, filenames in os.walk(path):
                     alphanumeric_sort(filenames)
                     for filename in filenames:
@@ -159,10 +168,155 @@ def filesizeformat(bytes, precision=2):
     bytes = int(bytes)
     if bytes is 0:
         return '0B'
-    log = math.floor(math.log(bytes, 1024))
+    mlog = math.floor(math.log(bytes, 1024))
     return "%.*f%s" % (
         precision,
-        bytes / math.pow(1024, log),
+        bytes / math.pow(1024, mlog),
         ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-        [int(log)]
+        [int(mlog)]
     )
+
+def unpack_archive(filepath, filetype, filename):
+    if filetype == 'ZIP':
+        try:
+            tempdir = tempfile.mkdtemp(filename)
+            zip = zipfile.ZipFile(filepath, 'r')
+            zip.extractall(tempdir)
+            return tempdir
+        except Exception, err:
+            log.Warn('Error extracting %s file %s: %s' % (
+                filetype, filepath, str(err)))
+    elif filetype == 'RAR':
+        try:
+            tempdir = tempfile.mkdtemp(filename)
+            p = Popen([APPS['rar'], 'x', filepath, tempdir],
+                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            out = p.communicate()
+            if out[1] != '':
+                log.Warn('Error extracting %s file %s: %s' % (
+                    filetype, filepath, out[1]))
+            else:
+                return tempdir
+        except Exception, err:
+            log.Warn('Error extracting %s file %s: %s' % (
+                filetype, filepath, str(err)))
+    return None
+
+def pack_archive(tempdir, filetype, filepath):
+    cwd = os.getcwd()
+    os.chdir(tempdir)
+    basename = os.path.basename(filepath)
+    if filetype == 'ZIP':
+        try:
+            zip = zipfile.ZipFile(filepath, 'w', zipfile.ZIP_DEFLATED)
+            for dirpath, dirnames, filenames in os.walk(tempdir):
+                for filename in filenames:
+                    relpath = os.path.relpath(os.path.join(dirpath, filename))
+                    zip.write(relpath)
+            zip.close()
+            os.chdir(cwd)
+            return True
+        except Exception, err:
+            log.Warn('Error packing %s file %s: %s' % (
+                filetype, basename, str(err)))
+    elif filetype == 'RAR':
+        try:
+            p = Popen([APPS['rar'], 'a', '-r', filepath, '*'],
+                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            out = p.communicate()
+            if out[1] != '':
+                log.Warn('Error packing %s file %s: %s' % (
+                    filetype, basename, out[1]))
+            else:
+                os.chdir(cwd)
+                return True
+        except Exception, err:
+            log.Warn('Error packing %s file %s: %s' % (
+                filetype, basename, str(err)))
+    return False
+
+def image_color(filepath):
+    p = Popen([APPS['identify'], '-format', '%[colorspace]', filepath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    stdout, stderr = p.communicate()
+    if stderr != '':
+        log.Warn('Error identifying file %s: %s\n' % (filepath, stderr.strip()))
+        return False
+    return stdout.strip()
+
+def image_scale(fullpath, opts):
+    command = [APPS['mogrify'], '-quality', str(opts['quality']),
+            '-scale', str(opts['scale']), fullpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    return True
+
+def image_level(fullpath, opts):
+    command = [APPS['mogrify'], '-level', str(opts['level']), fullpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    return True
+
+def image_bmp(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    if opts['cover'] and filename == cover:
+        depth, colors = 8, 256
+    elif opts['bmp-8']:
+        depth, colors = 8, 256
+    elif opts['bmp-4']:
+        depth, colors = 4, 16
+
+    command = [APPS['convert'], fullpath, '+matte',
+            '-depth', str(depth),
+            '-colors', str(colors),
+            'ppm:-']
+    try:
+        convert = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
+                stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = bmp.communicate()
+        if len(stdout) > 0:
+            newpath = os.path.join(
+                    os.path.dirname(fullpath), '%s.bmp' % basename)
+            newfile = open(newpath, 'wb')
+            newfile.write(stdout)
+            newfile.close()
+            if fileext.lower() != '.bmp':
+                os.unlink(fullpath)
+        return True
+    except OSError:
+        return False
+
+def image_jpeg(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    newpath = os.path.join(
+            os.path.dirname(fullpath), '%s.jpg' % basename)
+    command = [APPS['convert'], fullpath, newpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    if fileext.lower() != '.jpg':
+        os.unlink(fullpath)
+    return True
+
+def image_png(file, opts):
+    filename, fullpath, basename, fileext, cover = file
+    newpath = os.path.join(
+            os.path.dirname(fullpath), '%s.png' % basename)
+    command = [APPS['convert'], fullpath, newpath]
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    out = p.communicate()
+    if out[1] != '':
+        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
+        return False
+    if fileext.lower() != '.png':
+        os.unlink(fullpath)
+    return True

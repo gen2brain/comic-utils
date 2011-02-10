@@ -20,195 +20,46 @@
 import os
 import sys
 import glob
-import zipfile
-import tempfile
 import shutil
-from subprocess import Popen, PIPE
 from optparse import OptionParser
 
 try:
     from comicutils import utils
     from comicutils.debug import log
-    from comicutils.cmd import APPS
 except ImportError:
-    sys.stderr.write("Can't import utils module\r\nExiting...\r\n")
+    sys.stderr.write("Can't import comicutils module\r\nExiting...\r\n")
     sys.exit(1)
 
-def unpack_archive(filepath, filetype, filename):
-    if filetype == 'ZIP':
-        try:
-            tempdir = tempfile.mkdtemp(filename)
-            zip = zipfile.ZipFile(filepath, 'r')
-            zip.extractall(tempdir)
-            return tempdir
-        except Exception, err:
-            log.Warn('Error extracting %s file %s: %s' % (
-                filetype, filepath, str(err)))
-    elif filetype == 'RAR':
-        try:
-            tempdir = tempfile.mkdtemp(filename)
-            p = Popen([APPS['rar'], 'x', filepath, tempdir],
-                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
-            out = p.communicate()
-            if out[1] != '':
-                log.Warn('Error extracting %s file %s: %s' % (
-                    filetype, filepath, out[1]))
-            else:
-                return tempdir
-        except Exception, err:
-            log.Warn('Error extracting %s file %s: %s' % (
-                filetype, filepath, str(err)))
-    return None
-
-def pack_archive(tempdir, filetype, filepath):
-    cwd = os.getcwd()
-    os.chdir(tempdir)
-    basename = os.path.basename(filepath)
-    if filetype == 'ZIP':
-        try:
-            zip = zipfile.ZipFile(filepath, 'w', zipfile.ZIP_DEFLATED)
-            for dirpath, dirnames, filenames in os.walk(tempdir):
-                for filename in filenames:
-                    relpath = os.path.relpath(os.path.join(dirpath, filename))
-                    zip.write(relpath)
-            zip.close()
-            os.chdir(cwd)
-            return True
-        except Exception, err:
-            log.Warn('Error packing %s file %s: %s' % (
-                filetype, basename, str(err)))
-    elif filetype == 'RAR':
-        try:
-            p = Popen([APPS['rar'], 'a', '-r', filepath, '*'],
-                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
-            out = p.communicate()
-            if out[1] != '':
-                log.Warn('Error packing %s file %s: %s' % (
-                    filetype, basename, out[1]))
-            else:
-                os.chdir(cwd)
-                return True
-        except Exception, err:
-            log.Warn('Error packing %s file %s: %s' % (
-                filetype, basename, str(err)))
-    return False
-
-def image_color(filepath):
-    p = Popen([APPS['identify'], '-format', '%[colorspace]', filepath],
-            stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = p.communicate()
-    if stderr != '':
-        log.Warn('Error identifying file %s: %s\n' % (filepath, stderr.strip()))
-        return False
-    return stdout.strip()
-
-def image_scale(fullpath, opts):
-    command = [APPS['mogrify'], '-quality', str(opts.quality),
-            '-scale', str(opts.scale), fullpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    out = p.communicate()
-    if out[1] != '':
-        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
-        return False
-    return True
-
-def image_level(fullpath, opts):
-    command = [APPS['mogrify'], '-level', str(opts.level), fullpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    out = p.communicate()
-    if out[1] != '':
-        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
-        return False
-    return True
-
-def image_bmp(file, opts):
-    filename, fullpath, basename, fileext, cover = file
-    if opts.cover and filename == cover:
-        depth, colors = 8, 256
-    elif opts.BMP:
-        depth, colors = 8, 256
-    elif opts.bmp:
-        depth, colors = 4, 16
-
-    command = [APPS['convert'], fullpath, '+matte',
-            '-depth', str(depth),
-            '-colors', str(colors),
-            'ppm:-']
-    try:
-        convert = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
-                stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
-        stdout, stderr = bmp.communicate()
-        if len(stdout) > 0:
-            newpath = os.path.join(
-                    os.path.dirname(fullpath), '%s.bmp' % basename)
-            newfile = open(newpath, 'wb')
-            newfile.write(stdout)
-            newfile.close()
-            if fileext.lower() != '.bmp':
-                os.unlink(fullpath)
-        return True
-    except OSError:
-        return False
-
-def image_jpeg(file, opts):
-    filename, fullpath, basename, fileext, cover = file
-    newpath = os.path.join(
-            os.path.dirname(fullpath), '%s.jpg' % basename)
-    command = [APPS['convert'], fullpath, newpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    out = p.communicate()
-    if out[1] != '':
-        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
-        return False
-    if fileext.lower() != '.jpg':
-        os.unlink(fullpath)
-    return True
-
-def image_png(file, opts):
-    filename, fullpath, basename, fileext, cover = file
-    newpath = os.path.join(
-            os.path.dirname(fullpath), '%s.png' % basename)
-    command = [APPS['convert'], fullpath, newpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    out = p.communicate()
-    if out[1] != '':
-        log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
-        return False
-    if fileext.lower() != '.png':
-        os.unlink(fullpath)
-    return True
-
 def convert_images(tempdir, opts):
-    exclude = [] if not opts.exclude else opts.exclude
+    exclude = [] if not opts['exclude'] else opts['exclude']
     images = utils.get_images(tempdir)
     maxrecords = len(images)
     try:
         for filenum, file in enumerate(images):
             filename, fullpath, basename, fileext, cover = file
 
-            if opts.scale != '100%' or opts.quality != '85':
-                image_scale(fullpath, opts)
+            if opts['scale'] != '100%' or opts['quality'] != '85':
+                utils.image_scale(fullpath, opts)
 
-            if opts.level:
-                if image_color(fullpath) != 'RGB':
-                    image_level(fullpath, opts)
+            if opts['level']:
+                if utils.image_color(fullpath) != 'RGB':
+                    utils.image_level(fullpath, opts)
 
             if str(filenum) in exclude:
                 continue
-            if opts.nocover and filename == cover:
+            if opts['nocover'] and filename == cover:
                 continue
-            if opts.norgb and image_color(fullpath) == 'RGB':
+            if opts['norgb'] and utils.image_color(fullpath) == 'RGB':
                 continue
 
-            if opts.bmp or opts.BMP:
-                image_bmp(file, opts)
-            elif opts.jpeg:
-                image_jpeg(file, opts)
-            elif opts.png:
-                image_png(file, opts)
+            if opts['bmp-4'] or opts['bmp-8']:
+                utils.image_bmp(file, opts)
+            elif opts['jpeg']:
+                utils.image_jpeg(file, opts)
+            elif opts['png']:
+                utils.image_png(file, opts)
 
-            if opts.verbose:
+            if opts['verbose']:
                 percent = float(filenum) / float(maxrecords) * 100
                 sys.stderr.write('Converting images [%d%%]\r' % int(percent))
         return True
@@ -220,65 +71,65 @@ def exclude_callback(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
 def main(args, opts):
-    if opts.outdir:
-        if not os.path.isdir(opts.outdir):
-            log.Error('Error: %s is not a directory' % (opts.outdir))
+    if opts['outdir']:
+        if not os.path.isdir(opts['outdir']):
+            log.Error('Error: %s is not a directory' % (opts['outdir']))
 
     try:
         filenum = 1
-        comics = utils.get_comics(args, opts, opts.size)
+        comics = utils.get_comics(args, opts, opts['size'])
         total = len(comics)
 
         for file in comics:
             filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
 
-            if opts.outdir:
-                convdir = os.path.realpath(opts.outdir)
+            if opts['outdir']:
+                convdir = os.path.realpath(opts['outdir'])
             else:
                 convdir = os.path.join(filedir, '_converted')
 
-            if opts.verbose:
+            if opts['verbose']:
                 sys.stderr.write('File %d of %d\n' % (filenum, total))
 
             if os.path.isfile(os.path.join(convdir, filename)):
-                if opts.verbose:
+                if opts['verbose']:
                     sys.stderr.write('Skipping %s archive, file %s exists in output dir\n\n' % (
                         filetype, filename))
                 filenum += 1
                 continue
 
-            if opts.verbose:
+            if opts['verbose']:
                 sys.stderr.write('Proccessing %s archive %s (%sMB)\n' % (
                     filetype, fullpath, filesize/(1024*1024)))
                 sys.stderr.write('Unpacking...\r')
 
-            tempdir = unpack_archive(fullpath, filetype, filename)
+            tempdir = utils.unpack_archive(fullpath, filetype, filename)
             if tempdir is not None:
-                if opts.verbose:
+                if opts['verbose']:
                     sys.stderr.write('File %s unpacked\n' % (filename))
 
                 if convert_images(tempdir, opts):
-                    if opts.verbose:
+                    if opts['verbose']:
                         sys.stderr.write('File %s converted\n' % (filename))
-                    if not opts.outdir and not os.path.isdir(convdir):
+                    if not opts['outdir'] and not os.path.isdir(convdir):
                         os.mkdir(convdir)
-                    if opts.verbose:
+                    if opts['verbose']:
                         sys.stderr.write('Packing... \r')
 
-                    if opts.suffix:
-                        basename = basename + opts.suffix
+                    if opts['suffix']:
+                        basename = basename + opts['suffix']
                         filename = basename + fileext
 
-                    if opts.rar:
+                    if opts['rar']:
                         filetype = 'RAR'
                         filename = '%s.cbr' % basename
-                    elif opts.zip:
+                    elif opts['zip']:
                         filetype = 'ZIP'
                         filename = '%s.cbz' % basename
 
                     filepath = os.path.join(convdir, filename)
-                    if pack_archive(tempdir, filetype, filepath):
-                        if opts.verbose:
+                    if utils.pack_archive(tempdir, filetype, filepath):
+                        if opts['verbose']:
                             sys.stderr.write('File %s packed (%sMB)\n\n' % (
                                 filepath, os.path.getsize(filepath)/(1024*1024) ))
                         shutil.rmtree(tempdir)
@@ -292,7 +143,7 @@ def main(args, opts):
             shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
-    usage = 'usage: %prog <options> <file or dir>'
+    usage = 'usage: %prog <options> <file or directory>'
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
@@ -304,13 +155,13 @@ if __name__ == '__main__':
             help='output directory (default is _converted in proccesed directory)', metavar='<arg>')
     parser.add_option('-m', '--size', action='store', dest='size', type='int', default=None,
             help='process only files larger then size (in MB)', metavar='<arg>')
-    parser.add_option('-b', '--bmp-4', action='store_true', dest='bmp', default=False,
+    parser.add_option('-b', '--bmp-4', action='store_true', dest='bmp-4', default=False,
             help='convert images to 4bit BMP format', metavar='<arg>')
     parser.add_option('-c', '--cover', action='store_true', dest='cover', default=False,
             help='convert cover to 8bit BMP instead of 4bit (used with --bmp-4)', metavar='<arg>')
     parser.add_option('-n', '--no-cover', action='store_true', dest='nocover', default=False,
             help='exclude cover', metavar='<arg>')
-    parser.add_option('-B', '--bmp-8', action='store_true', dest='BMP', default=False,
+    parser.add_option('-B', '--bmp-8', action='store_true', dest='bmp-8', default=False,
             help='convert images to 8bit BMP format', metavar='<arg>')
     parser.add_option('-j', '--jpeg', action='store_true', dest='jpeg', default=False,
             help='convert images to JPEG format', metavar='<arg>')
@@ -333,6 +184,7 @@ if __name__ == '__main__':
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
             help='quiet')
     (opts, args) = parser.parse_args()
+    opts_dict = vars(opts)
 
     try:
         path_args = sum(map(glob.glob, args),[])
@@ -344,4 +196,4 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
-    main(path_args, opts)
+    main(path_args, opts_dict)
