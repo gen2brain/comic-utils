@@ -21,13 +21,14 @@ import os
 import sys
 import glob
 import shutil
+import signal
 from optparse import OptionParser
 
 try:
     from comicutils import utils
     from comicutils.debug import log
-except ImportError:
-    sys.stderr.write("Can't import comicutils module\r\nExiting...\r\n")
+except ImportError, err:
+    sys.stderr.write("Error: %s%s" % (str(err), os.linesep))
     sys.exit(1)
 
 def convert_images(tempdir, opts):
@@ -188,14 +189,18 @@ if __name__ == '__main__':
     (opts, args) = parser.parse_args()
     opts_dict = vars(opts)
 
-    try:
-        path_args = sum(map(glob.glob, args),[])
-        if not path_args:
-            parser.print_help()
-            sys.stderr.write('\nNo such file or directory\n\n')
-            sys.exit(1)
-    except Exception:
-        parser.print_help()
-        sys.exit(1)
+    path_args = sum(map(glob.glob, args),[])
+    if not path_args:
+        from PyQt4.QtGui import QApplication
+        from comicutils.gui import ComicConvert
+        app = QApplication(sys.argv)
+        convert = ComicConvert()
+        convert.show()
 
-    main(path_args, opts_dict)
+        try:
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            sys.exit(app.exec_())
+        except KeyboardInterrupt:
+            pass
+    else:
+        main(path_args, opts_dict)
