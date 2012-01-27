@@ -3,22 +3,25 @@
 
 import sys
 import glob
-import signal
+import time
 
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 try:
-    from comicutils.gui.cc_ui import Ui_MainWindow
+    from comicutils.ui.cc_ui import Ui_MainWindow
     from comicutils import utils
 except ImportError:
-    sys.stderr.write("Can't import comicutils module\r\nExiting...\r\n")
+    sys.stderr.write("Error: %s%s" % (str(err), os.linesep))
     sys.exit(1)
 
 class ComicConvert(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent = None):
         QMainWindow.__init__(self, parent)
+        self.setFixedSize(self.sizeHint())
+        self.layout().setSizeConstraint(QLayout.SetFixedSize)
+        self.setWindowFlags((self.windowFlags() | Qt.CustomizeWindowHint) & ~Qt.WindowMaximizeButtonHint)
         self.setupUi(self)
         self.progressBar.hide()
 
@@ -55,6 +58,8 @@ class ComicConvert(QMainWindow, Ui_MainWindow):
                 SIGNAL("valueChanged(int)"), self.on_opt_size_valueChanged)
         self.connect(self.select_lineEdit,
                 SIGNAL("returnPressed()"), self.refresh_treeview)
+        self.connect(self.progressBar,
+                SIGNAL("valueChanged(int)"), self.on_progress_bar_changed)
 
     def refresh_treeview(self):
         self.model.clear()
@@ -68,8 +73,8 @@ class ComicConvert(QMainWindow, Ui_MainWindow):
             row = [filename, filetype, utils.filesizeformat(filesize)]
             self.model.appendRow([QStandardItem(item) for item in row])
             size_sum += filesize
-        self.treeView.setColumnWidth(0, 420)
-        self.comicStatus.setText("%d Comics\t\t%s" % (
+        self.treeView.setColumnWidth(0, 550)
+        self.comicStatus.setText("%d comics\t\t%s" % (
             len(self.comics), utils.filesizeformat(size_sum)))
 
     def get_options(self):
@@ -117,7 +122,7 @@ class ComicConvert(QMainWindow, Ui_MainWindow):
         self.convert_pushButton.setEnabled(True)
         self.cancel_pushButton.setEnabled(False)
         self.progressBar.hide()
-        self.thread.terminate()
+        self.thread.stop()
 
     @pyqtSignature("")
     def on_select_pushButton_clicked(self):
@@ -147,6 +152,10 @@ class ComicConvert(QMainWindow, Ui_MainWindow):
         QMessageBox.about(self, "About",
                 """<b>Comic Convert</b>""")
 
+    @pyqtSignature("")
+    def on_progress_bar_changed(self, value):
+        self.progressBar.setValue(value)
+
 class Worker(QThread):
 
     def __init__(self, parent = None):
@@ -158,25 +167,19 @@ class Worker(QThread):
         self.exiting = True
         self.wait()
 
+    def stop(self):
+        self.exiting = True
+        self.terminate()
+
     def run(self):
+        self.exiting = False
         while not self.exiting:
-            for x in range(1, 11):
-                self.parent.progressStatus.setText("File %s of 10" % x)
-                for a in range(1, 101):
-                    self.sleep(1)
-                    self.parent.progressBar.setValue(a)
-
-
-def main():
-    app = QApplication(sys.argv)
-    cc = ComicConvert()
-    cc.show()
-
-    try:
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-        sys.exit(app.exec_())
-    except KeyboardInterrupt:
-        cc.close()
-
-if __name__ == '__main__':
-    main()
+            for x in range(100):
+                time.sleep(0.1)
+                percent = float(x) / float(100) * 100
+                self.parent.progressBar.emit(SIGNAL("valueChanged(int)"), percent)
+            self.parent.progressBar.emit(SIGNAL("valueChanged(int)"), 0)
+            self.parent.progressBar.hide()
+            self.parent.convert_pushButton.setEnabled(True)
+            self.parent.cancel_pushButton.setEnabled(False)
+            self.exiting = True

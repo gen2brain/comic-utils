@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="res">
+    <file>images/bg.gif</file>
+    <file>images/stripzona.gif</file>
+    <file>images/tile.png</file>
+  </qresource>
+</RCC>
