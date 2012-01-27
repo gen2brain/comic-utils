@@ -94,22 +94,21 @@ def filter_quality(quality):
         imfilter = Image.NEAREST
     return imfilter
 
-def create_thumbnail(outpath, file, opts):
-    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
-    thumbpath = get_thumb_path(file, outpath, opts.type)
+def create_thumbnail(comic, thumbpath, opts):
+    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = comic
     extractor = Extractor(fullpath)
     files = extractor.get_files()
     cover = utils.guess_cover(files)
-    imfilter = filter_quality(opts.quality)
+    imfilter = filter_quality(opts['quality'])
 
     fd = extractor.extract(cover)
     im = Image.open(fd)
     if im.size[0] > im.size[1]:
-        x = opts.size
-        y = opts.size * im.size[1] / im.size[0]
+        x = opts['size']
+        y = opts['size'] * im.size[1] / im.size[0]
     else:
-        x = opts.size * im.size[0] / im.size[1]
-        y = opts.size
+        x = opts['size'] * im.size[0] / im.size[1]
+        y = opts['size']
     x = max(1, x)
     y = max(1, y)
 
@@ -121,41 +120,55 @@ def create_thumbnail(outpath, file, opts):
     im = im.convert('RGB')
     im.save(thumbpath, 'PNG', pnginfo=info)
 
-def get_thumb_path(file, outpath, type):
-    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
-    if type == 0:
+def get_thumb_path(comic, outdir, ctype):
+    filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = comic
+    if ctype == 0:
         thumbname = "%s.png" % md5(fileuri).hexdigest()
-    elif type == 1:
+    elif ctype == 1:
         thumbname = "%s.png" % filename
-    thumbpath = os.path.join(outpath, thumbname)
+    thumbpath = os.path.join(outdir, thumbname)
     return thumbpath
 
-def main(args, opts):
-    if opts.outpath:
-        if os.path.isdir(opts.outpath):
-            outpath = os.path.realpath(opts.outpath)
-        else:
-            log.Error('Error: %s is not a directory' % (opts.outpath))
+def get_thumb_dir(opts):
+    if opts['outdir']:
+        outdir = os.path.realpath(opts['outdir'])
+    elif opts['type'] == 2:
+        outdir = os.path.expanduser('~/.cache/rfm-Gamma/thumbnails')
     else:
-        outpath = os.path.expanduser('~/.thumbnails/normal')
-        if not os.path.isdir(outpath):
-            os.makedirs(outpath)
+        outdir = os.path.expanduser('~/.thumbnails/normal')
+    return outdir
 
+def main(args, opts):
     try:
+        outdir = get_thumb_dir(opts)
+        if not os.path.isdir(outdir):
+            os.makedirs(outdir)
+
         comics = utils.get_comics(args, opts)
-        for file in comics:
-            filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
-            if not opts.overwrite:
-                thumbpath = get_thumb_path(file, outpath, opts.type)
-                if os.path.exists(thumbpath):
-                    pim = Image.open(thumbpath)
-                    if int(filemtime) != int(pim.info['Thumb::MTime']):
-                        pass
-                    else:
-                        continue
-                else:
-                    pass
-            create_thumbnail(outpath, file, opts)
+        for comic in comics:
+            filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = comic
+
+            if opts['type'] == 2:
+                key = "%10u" % utils.g_str_hash(filedir)
+                out = os.path.join(outdir, key)
+                if not os.path.isdir(out):
+                    os.makedirs(out)
+                for size in [20, 48, 96, 400]:
+                    opts['size'] = size
+                    key = "%10u" % utils.g_str_hash(fullpath)
+                    thumbname = "%s-%d.png" % (key, size)
+                    thumbpath = os.path.join(out, thumbname)
+                    create_thumbnail(comic, thumbpath, opts)
+            else:
+                thumbpath = get_thumb_path(comic, outdir, opts['type'])
+                if not opts['overwrite']:
+                    if os.path.exists(thumbpath):
+                        pim = Image.open(thumbpath)
+                        if int(filemtime) != int(pim.info['Thumb::MTime']):
+                            pass
+                        else:
+                            continue
+                create_thumbnail(comic, thumbpath, opts)
     except KeyboardInterrupt:
         pass
     except Exception, err:
@@ -167,8 +180,8 @@ if __name__ == '__main__':
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--size', action='store', dest='size', type='int', default=512,
             help='thumbnail size (default %default)', metavar='<arg>')
-    parser.add_option('-o', '--outdir', action='store', dest='outpath', type='string', default=None,
-            help='output directory (default is ~/thumbnails/normal)', metavar='<arg>')
+    parser.add_option('-o', '--outdir', action='store', dest='outdir', type='string', default=None,
+            help='output directory', metavar='<arg>')
     parser.add_option('-q', '--quality', action='store', dest='quality', type='int', default=0,
             help='quality filter, 0 = NEAREST (default), 1 = BILINEAR, 2 = BICUBIC, 3 = ANTIALIAS', metavar='<arg>')
     parser.add_option('-f', '--force', action='store_true', dest='overwrite', default=True,
@@ -176,10 +189,11 @@ if __name__ == '__main__':
     parser.add_option('-n', '--no-clobber', action='store_false', dest='overwrite',
             help='do not overwrite existing file', metavar='<arg>')
     parser.add_option('-t', '--type', action='store', dest='type', type='int', default=0,
-            help='type, 0 = freedesktop (default), 1 = normal', metavar='<arg>')
+            help='type, 0 = freedesktop.org (default), 1 = normal, 2 = Rodent Filemanager', metavar='<arg>')
     parser.add_option('-R', '--recursive', action='store_true', dest='recursive', default=False,
             help='process subdirectories recursively', metavar='<arg>')
     (opts, args) = parser.parse_args()
+    opts_dict = vars(opts)
 
     try:
         path_args = []
@@ -191,4 +205,4 @@ if __name__ == '__main__':
             parser.print_help()
             sys.exit(1)
 
-    main(path_args, opts)
+    main(path_args, opts_dict)

@@ -25,7 +25,10 @@ import zipfile
 import tempfile
 import urllib
 import math
+import ctypes as ct
+from ctypes.util import find_library
 from subprocess import Popen, PIPE
+from stat import ST_SIZE, ST_MTIME
 
 try:
     from debug import log
@@ -34,10 +37,34 @@ except ImportError:
     sys.stderr.write("Can't import comicutils module\r\nExiting...\r\n")
     sys.exit(1)
 
+class GStringData(ct.Structure):
+   _fields_ = [("str", ct.c_char_p),
+               ("len", ct.c_ulong),
+               ("allocated_len", ct.c_ulong)]
+
+lib_path = find_library("glib-2.0")
+GStringDataPointer = ct.POINTER(GStringData)
+
 REC_RE = re.compile("\d+|\D+")
 CB_RE = re.compile(r'^.*\.(cbr|cbz)$', re.IGNORECASE)
 FRONT_RE = re.compile('(cover|front)', re.IGNORECASE)
 IMG_RE = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)\s*$', re.IGNORECASE)
+
+def djb_hash(s):
+    '''Return the value of DJB's hash function for the given 8-bit string.'''
+    h = 5381
+    for c in s:
+        h = (((h << 5) + h) ^ ord(c)) & 0xffffffff
+    return h
+
+def g_str_hash(key):
+    dll = ct.CDLL(lib_path)
+    dll.g_string_new.argtypes = [ct.c_char_p]
+    dll.g_string_new.restype = GStringDataPointer
+    dll.g_string_hash.argtypes = [GStringDataPointer]
+    dll.g_string_hash.restype = ct.c_uint
+    string = dll.g_string_new(key)
+    return dll.g_string_hash(string)
 
 def get_mime_type(filepath):
     """Returns mime type of archive file"""
@@ -72,26 +99,32 @@ def get_comics(path_args, opts, size=None):
         filename = os.path.basename(fullpath)
         basename, fileext = os.path.splitext(filename)
         filedir = os.path.dirname(fullpath)
-        filetype = get_mime_type(fullpath)
-        filesize = os.path.getsize(fullpath)
-        filemtime = os.path.getmtime(fullpath)
         fileuri = get_file_uri(fullpath)
+        filetype = get_mime_type(fullpath)
+        st = os.stat(fullpath)
+        filesize = st[ST_SIZE]
+        filemtime = st[ST_MTIME]
         return (filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri)
+
+    def is_size(filesize, size):
+        if size is not None:
+            if filesize > size * (1024*1024):
+                return True
+        else:
+            return True
+        return False
 
     alphanumeric_sort(path_args)
     for path in path_args:
         path = os.path.realpath(path)
 
         if os.path.isfile(path):
-            fullpath = os.path.realpath(path)
-            filename = os.path.basename(fullpath)
-            filesize = os.path.getsize(fullpath)
+            filepath = path
+            filename = os.path.basename(filepath)
             if CB_RE.match(filename):
-                if size is None:
-                    comics.append(get_file_info(fullpath))
-                else:
-                    if filesize > size * (1024*1024):
-                        comics.append(get_file_info(fullpath))
+                filesize = os.path.getsize(filepath)
+                if is_size(filesize, size):
+                    comics.append(get_file_info(filepath))
 
         elif os.path.isdir(path):
             if opts['recursive']:
@@ -99,25 +132,19 @@ def get_comics(path_args, opts, size=None):
                     alphanumeric_sort(filenames)
                     for filename in filenames:
                         if CB_RE.match(filename):
-                            fullpath = os.path.join(dirpath, filename)
-                            filesize = os.path.getsize(fullpath)
-                            if size is None:
-                                comics.append(get_file_info(fullpath))
-                            else:
-                                if filesize > size * (1024*1024):
-                                    comics.append(get_file_info(fullpath))
+                            filepath = os.path.join(dirpath, filename)
+                            filesize = os.path.getsize(filepath)
+                            if is_size(filesize, size):
+                                comics.append(get_file_info(filepath))
             else:
                 filenames = os.listdir(path)
                 alphanumeric_sort(filenames)
                 for filename in filenames:
-                    fullpath = os.path.join(path, filename)
-                    if os.path.isfile(fullpath) and CB_RE.match(filename):
-                        filesize = os.path.getsize(fullpath)
-                        if size is None:
-                            comics.append(get_file_info(fullpath))
-                        else:
-                            if filesize > size * (1024*1024):
-                                comics.append(get_file_info(fullpath))
+                    filepath = os.path.join(path, filename)
+                    if os.path.isfile(filepath) and CB_RE.match(filename):
+                        filesize = os.path.getsize(filepath)
+                        if is_size(filesize, size):
+                            comics.append(get_file_info(filepath))
 
     return comics
 

@@ -83,6 +83,10 @@ def main(args, opts):
         for file in comics:
             filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
 
+            if opts['print']:
+                sys.stdout.write('%s\n' % fullpath)
+                continue
+
             if opts['outdir']:
                 convdir = os.path.realpath(opts['outdir'])
             else:
@@ -137,10 +141,6 @@ def main(args, opts):
     except KeyboardInterrupt:
         if tempdir:
             shutil.rmtree(tempdir)
-    except Exception, err:
-        log.Error('Error: %s %s' % (str(type(err)), str(err)))
-        if tempdir:
-            shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
     usage = 'usage: %prog <options> <file or directory>'
@@ -179,6 +179,8 @@ if __name__ == '__main__':
             help='add suffix to file basename', metavar='<arg>')
     parser.add_option('-R', '--recursive', action='store_true', dest='recursive', default=False,
             help='process subdirectories recursively', metavar='<arg>')
+    parser.add_option('-P', '--print', action='store_true', dest='print',
+            help='print filenames only')
     parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=True,
             help='verbose (default)')
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
