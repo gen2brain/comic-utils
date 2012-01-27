@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import glob
 import time
@@ -11,7 +12,7 @@ from PyQt4.QtCore import *
 try:
     from comicutils.ui.cc_ui import Ui_MainWindow
     from comicutils import utils
-except ImportError:
+except ImportError, err:
     sys.stderr.write("Error: %s%s" % (str(err), os.linesep))
     sys.exit(1)
 

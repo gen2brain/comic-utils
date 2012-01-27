@@ -1,2 +1,2 @@
-include setup.py AUTHORS README COPYING
+include setup.py comic-convert comic-thumbmnails AUTHORS README.markdown COPYING
 recursive-include src/ *.py
