@@ -60,6 +60,10 @@ This example will convert all images except comicbook cover to 4bit BMP image, c
 
 [BMP](http://en.wikipedia.org/wiki/BMP_file_format) format is uncompressed, for black&white pages very good choice, zip and rar can compress him very well, archive size can be smaller 2-3x and will be readable by comic readers.
 
+If you start comic-convert without any options or arguments, you will get gui:
+
+![comic-convert.png](http://goo.gl/ZKSJB)
+
 
 ### comic-thumbnails
 
