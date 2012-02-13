@@ -28,22 +28,23 @@ Using
     Options:
       -h, --help                show this help message and exit
       -s <arg>, --scale=<arg>   image geometry (default 100%)
-      -q <arg>, --quality=<arg> image quality (default 75)
+      -q <arg>, --quality=<arg> image quality (default 0)
       -l <arg>, --level=<arg>   adjust the level of image contrast
       -o <arg>, --outdir=<arg>  output directory (default is _converted in proccesed directory)
       -m <arg>, --size=<arg>    process only files larger then size (in MB)
       -b, --bmp-4               convert images to 4bit BMP format
       -c, --cover               convert cover to 8bit BMP instead of 4bit (used with --bmp-4)
       -n, --no-cover            exclude cover
+      -g, --no-rgb              exclude images with RGB colorspace
+      -e <arg>, --exclude=<arg> list of images to exclude (0,2,13)
       -B, --bmp-8               convert images to 8bit BMP format
       -j, --jpeg                convert images to JPEG format
       -p, --png                 convert images to PNG format
-      -e <arg>, --exclude=<arg> list of images to exclude (0,2,13)
-      -g, --no-rgb              exclude images with RGB colorspace
       -r, --rar                 convert archive to RAR format
       -z, --zip                 convert archive to ZIP format
       -S, --suffix              add suffix to file basename
       -R, --recursive           process subdirectories recursively
+      -P, --print               print filenames only
       -v, --verbose             verbose (default)
       -Q, --quiet               quiet
 
@@ -71,7 +72,7 @@ This example will convert all images except comicbook cover to 4bit BMP image, c
       -q <arg>, --quality=<arg> quality filter, 0 = NEAREST (default), 1 = BILINEAR, 2 = BICUBIC, 3 = ANTIALIAS
       -f, --force               overwrite (default)
       -n, --no-clobber          do not overwrite existing file
-      -t <arg>, --type=<arg>    type, 0 = freedesktop (default), 1 = normal
+      -t <arg>, --type=<arg>    type, 0 = freedesktop (default), 1 = normal, 2 = Rodent Filemanager
       -R, --recursive           process subdirectories recursively
 
 Examples:

@@ -31,43 +31,6 @@ except ImportError, err:
     sys.stderr.write("Error: %s%s" % (str(err), os.linesep))
     sys.exit(1)
 
-def convert_images(tempdir, opts):
-    exclude = [] if not opts['exclude'] else opts['exclude']
-    images = utils.get_images(tempdir)
-    maxrecords = len(images)
-    try:
-        for filenum, file in enumerate(images):
-            filename, fullpath, basename, fileext, cover = file
-
-            if opts['scale'] != '100%' or opts['quality'] != '85':
-                utils.image_scale(fullpath, opts)
-
-            if opts['level']:
-                if utils.image_color(fullpath) != 'RGB':
-                    utils.image_level(fullpath, opts)
-
-            if str(filenum) in exclude:
-                continue
-            if opts['nocover'] and filename == cover:
-                continue
-            if opts['norgb'] and utils.image_color(fullpath) == 'RGB':
-                continue
-
-            if opts['bmp-4'] or opts['bmp-8']:
-                utils.image_bmp(file, opts)
-            elif opts['jpeg']:
-                utils.image_jpeg(file, opts)
-            elif opts['png']:
-                utils.image_png(file, opts)
-
-            if opts['verbose']:
-                percent = float(filenum) / float(maxrecords) * 100
-                sys.stderr.write('Converting images [%d%%]\r' % int(percent))
-        return True
-    except Exception, err:
-        log.Warn('Error converting file %s: %s' % (tempdir, str(err)))
-    return False
-
 def exclude_callback(option, opt, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
@@ -81,8 +44,8 @@ def main(args, opts):
         comics = utils.get_comics(args, opts, opts['size'])
         total = len(comics)
 
-        for file in comics:
-            filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = file
+        for comic in comics:
+            filename, basename, fileext, filedir, fullpath, filetype, filesize, filemtime, fileuri = comic
 
             if opts['print']:
                 sys.stdout.write('%s\n' % fullpath)
@@ -113,7 +76,7 @@ def main(args, opts):
                 if opts['verbose']:
                     sys.stderr.write('File %s unpacked\n' % (filename))
 
-                if convert_images(tempdir, opts):
+                if utils.convert_images(tempdir, opts):
                     if opts['verbose']:
                         sys.stderr.write('File %s converted\n' % (filename))
                     if not opts['outdir'] and not os.path.isdir(convdir):
@@ -143,12 +106,12 @@ def main(args, opts):
         if tempdir:
             shutil.rmtree(tempdir)
 
-if __name__ == '__main__':
+def parse_args():
     usage = 'usage: %prog <options> <file or directory>'
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--scale', action='store', dest='scale', type='string', default='100%',
             help='image geometry (default %default)', metavar='<arg>')
-    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='85',
+    parser.add_option('-q', '--quality', action='store', dest='quality', type='string', default='0',
             help='image quality (default %default)', metavar='<arg>')
     parser.add_option('-l', '--level', action='store', dest='level', type='string', default=None,
             help='adjust the level of image contrast', metavar='<arg>')
@@ -162,16 +125,16 @@ if __name__ == '__main__':
             help='convert cover to 8bit BMP instead of 4bit (used with --bmp-4)', metavar='<arg>')
     parser.add_option('-n', '--no-cover', action='store_true', dest='nocover', default=False,
             help='exclude cover', metavar='<arg>')
+    parser.add_option('-g', '--no-rgb', action='store_true', dest='norgb', default=False,
+            help='exclude images with RGB colorspace', metavar='<arg>')
+    parser.add_option('-e', '--exclude', action='callback', dest='exclude', type='string', callback=exclude_callback,
+            help='list of images to exclude (0,2,13)', metavar='<arg>')
     parser.add_option('-B', '--bmp-8', action='store_true', dest='bmp-8', default=False,
             help='convert images to 8bit BMP format', metavar='<arg>')
     parser.add_option('-j', '--jpeg', action='store_true', dest='jpeg', default=False,
             help='convert images to JPEG format', metavar='<arg>')
     parser.add_option('-p', '--png', action='store_true', dest='png', default=False,
             help='convert images to PNG format', metavar='<arg>')
-    parser.add_option('-e', '--exclude', action='callback', dest='exclude', type='string', callback=exclude_callback,
-            help='list of images to exclude (0,2,13)', metavar='<arg>')
-    parser.add_option('-g', '--no-rgb', action='store_true', dest='norgb', default=False,
-            help='exclude images with RGB colorspace', metavar='<arg>')
     parser.add_option('-r', '--rar', action='store_true', dest='rar', default=False,
             help='convert archive to RAR format', metavar='<arg>')
     parser.add_option('-z', '--zip', action='store_true', dest='zip', default=False,
@@ -186,17 +149,23 @@ if __name__ == '__main__':
             help='verbose (default)')
     parser.add_option('-Q', '--quiet', action='store_false', dest='verbose',
             help='quiet')
-    (opts, args) = parser.parse_args()
-    opts_dict = vars(opts)
+    return parser.parse_args()
 
+if __name__ == '__main__':
+    opts, args = parse_args()
+    opts_dict = vars(opts)
     path_args = sum(map(glob.glob, args),[])
+
     if not path_args:
-        from PyQt4.QtGui import QApplication
-        from comicutils.gui import ComicConvert
+        try:
+            from PyQt4.QtGui import QApplication
+            from comicutils.gui import ComicConvert
+        except ImportError, err:
+            sys.stderr.write("Error: %s%s" % (str(err), os.linesep))
+            sys.exit(1)
         app = QApplication(sys.argv)
         convert = ComicConvert()
         convert.show()
-
         try:
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             sys.exit(app.exec_())

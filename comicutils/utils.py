@@ -27,8 +27,20 @@ import urllib
 import math
 import ctypes as ct
 from ctypes.util import find_library
+import subprocess
 from subprocess import Popen, PIPE
 from stat import ST_SIZE, ST_MTIME
+
+if os.name == 'nt':
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    startupinfo = None
+
+try:
+    from PyQt4.QtCore import SIGNAL
+except ImportError, err:
+    pass
 
 try:
     from debug import log
@@ -51,13 +63,14 @@ FRONT_RE = re.compile('(cover|front)', re.IGNORECASE)
 IMG_RE = re.compile(r'^.*\.(jpg|jpeg|jpe|png|gif|bmp|tif|tiff)\s*$', re.IGNORECASE)
 
 def djb_hash(s):
-    '''Return the value of DJB's hash function for the given 8-bit string.'''
+    """Returns the value of DJB's hash function for the given 8-bit string."""
     h = 5381
     for c in s:
         h = (((h << 5) + h) ^ ord(c)) & 0xffffffff
     return h
 
 def g_str_hash(key):
+    """Returns glib g_string_hash"""
     dll = ct.CDLL(lib_path)
     dll.g_string_new.argtypes = [ct.c_char_p]
     dll.g_string_new.restype = GStringDataPointer
@@ -148,11 +161,11 @@ def get_comics(path_args, opts, size=None):
 
     return comics
 
-def get_images(dir):
+def get_images(dirname):
     """Returns list of images within archive"""
     images = []
     try:
-        for dirpath, dirnames, filenames in os.walk(dir):
+        for dirpath, dirnames, filenames in os.walk(dirname):
             alphanumeric_sort(filenames)
             cover = guess_cover(filenames)
             for filename in filenames:
@@ -203,35 +216,39 @@ def filesizeformat(bytes, precision=2):
         [int(mlog)]
     )
 
-def unpack_archive(filepath, filetype, filename):
+def unpack_archive(fullpath, filetype, filename):
     if filetype == 'ZIP':
         try:
             tempdir = tempfile.mkdtemp(filename)
-            zip = zipfile.ZipFile(filepath, 'r')
+            zip = zipfile.ZipFile(fullpath, 'r')
             zip.extractall(tempdir)
             return tempdir
         except Exception, err:
             log.Warn('Error extracting %s file %s: %s' % (
-                filetype, filepath, str(err)))
+                filetype, fullpath, str(err)))
     elif filetype == 'RAR':
         try:
             tempdir = tempfile.mkdtemp(filename)
-            p = Popen([APPS['rar'], 'x', filepath, tempdir],
-                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            p = Popen([APPS['rar'], 'x', fullpath, tempdir],
+                    stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                    shell=False, startupinfo=startupinfo)
             out = p.communicate()
             if out[1] != '':
                 log.Warn('Error extracting %s file %s: %s' % (
-                    filetype, filepath, out[1]))
+                    filetype, fullpath, out[1]))
             else:
                 return tempdir
         except Exception, err:
             log.Warn('Error extracting %s file %s: %s' % (
-                filetype, filepath, str(err)))
+                filetype, fullpath, str(err)))
     return None
 
 def pack_archive(tempdir, filetype, filepath):
-    cwd = os.getcwd()
-    os.chdir(tempdir)
+    try:
+        cwd = os.getcwd()
+        os.chdir(tempdir)
+    except IOError:
+        pass
     basename = os.path.basename(filepath)
     if filetype == 'ZIP':
         try:
@@ -249,7 +266,8 @@ def pack_archive(tempdir, filetype, filepath):
     elif filetype == 'RAR':
         try:
             p = Popen([APPS['rar'], 'a', '-r', filepath, '*'],
-                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                    stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                    shell=False, startupinfo=startupinfo)
             out = p.communicate()
             if out[1] != '':
                 log.Warn('Error packing %s file %s: %s' % (
@@ -262,19 +280,21 @@ def pack_archive(tempdir, filetype, filepath):
                 filetype, basename, str(err)))
     return False
 
-def image_color(filepath):
-    p = Popen([APPS['identify'], '-format', '%[colorspace]', filepath],
-            stdin=PIPE, stdout=PIPE, stderr=PIPE)
+def image_color(fullpath):
+    p = Popen([APPS['identify'], '-format', '%[colorspace]', fullpath],
+            stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            shell=False, startupinfo=startupinfo)
     stdout, stderr = p.communicate()
     if stderr != '':
-        log.Warn('Error identifying file %s: %s\n' % (filepath, stderr.strip()))
+        log.Warn('Error identifying file %s: %s\n' % (fullpath, stderr.strip()))
         return False
     return stdout.strip()
 
 def image_scale(fullpath, opts):
     command = [APPS['mogrify'], '-quality', str(opts['quality']),
             '-scale', str(opts['scale']), fullpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            shell=False, startupinfo=startupinfo)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -283,15 +303,16 @@ def image_scale(fullpath, opts):
 
 def image_level(fullpath, opts):
     command = [APPS['mogrify'], '-level', str(opts['level']), fullpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            shell=False, startupinfo=startupinfo)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
         return False
     return True
 
-def image_bmp(file, opts):
-    filename, fullpath, basename, fileext, cover = file
+def image_bmp(image, opts):
+    filename, fullpath, basename, fileext, cover = image
     if opts['cover'] and filename == cover:
         depth, colors = 8, 256
     elif opts['bmp-8']:
@@ -304,9 +325,11 @@ def image_bmp(file, opts):
             '-colors', str(colors),
             'ppm:-']
     try:
-        convert = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        convert = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                shell=False, startupinfo=startupinfo)
         bmp = Popen([APPS['ppmtobmp'], '-bpp', str(depth)],
-                stdin=convert.stdout, stdout=PIPE, stderr=PIPE)
+                stdin=convert.stdout, stdout=PIPE, stderr=PIPE,
+                shell=False, startupinfo=startupinfo)
         stdout, stderr = bmp.communicate()
         if len(stdout) > 0:
             newpath = os.path.join(
@@ -320,12 +343,13 @@ def image_bmp(file, opts):
     except OSError:
         return False
 
-def image_jpeg(file, opts):
-    filename, fullpath, basename, fileext, cover = file
+def image_jpeg(image, opts):
+    filename, fullpath, basename, fileext, cover = image
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.jpg' % basename)
     command = [APPS['convert'], fullpath, newpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            shell=False, startupinfo=startupinfo)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -334,12 +358,13 @@ def image_jpeg(file, opts):
         os.unlink(fullpath)
     return True
 
-def image_png(file, opts):
-    filename, fullpath, basename, fileext, cover = file
+def image_png(image, opts):
+    filename, fullpath, basename, fileext, cover = image
     newpath = os.path.join(
             os.path.dirname(fullpath), '%s.png' % basename)
     command = [APPS['convert'], fullpath, newpath]
-    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            shell=False, startupinfo=startupinfo)
     out = p.communicate()
     if out[1] != '':
         log.Warn('Error converting file %s: %s' % (fullpath, out[1]))
@@ -347,3 +372,60 @@ def image_png(file, opts):
     if fileext.lower() != '.png':
         os.unlink(fullpath)
     return True
+
+def convert_images(tempdir, opts, parent=None, row=None):
+    exclude = [] if not opts['exclude'] else opts['exclude']
+    images = get_images(tempdir)
+    filenum = 0
+    maxrecords = len(images)
+    
+    def progress_update(filenum):
+        percent = float(filenum) / float(maxrecords) * 100
+        if opts['verbose']:
+            sys.stderr.write('Converting images [%d%%]\r' % int(percent))
+        if parent:
+            if row is not None:
+                rowcount = parent.model.rowCount()
+                prefix = "File %d of %d -" % (row+1, rowcount)
+            else:
+                prefix = ""
+            parent.progressBar.emit(SIGNAL("valueChanged(int)"), percent)
+            parent.emit(SIGNAL("show_message(PyQt_PyObject)"), "%s Converting images [%d%%]" % (prefix, int(percent)))
+
+    try:
+        for image in images:
+            filename, fullpath, basename, fileext, cover = image
+
+            if opts['scale'] != '100%' or opts['quality'] != '0':
+                image_scale(fullpath, opts)
+
+            if bool(opts['level']):
+                if image_color(fullpath) != 'RGB':
+                    image_level(fullpath, opts)
+
+            if str(filenum) in exclude:
+                progress_update(filenum)
+                filenum += 1
+                continue
+            if opts['nocover'] and filename == cover:
+                progress_update(filenum)
+                filenum += 1
+                continue
+            if opts['norgb'] and image_color(fullpath) == 'RGB':
+                progress_update(filenum)
+                filenum += 1
+                continue
+
+            if opts['bmp-4'] or opts['bmp-8']:
+                image_bmp(image, opts)
+            elif opts['jpeg']:
+                image_jpeg(image, opts)
+            elif opts['png']:
+                image_png(image, opts)
+
+            progress_update(filenum)
+            filenum += 1
+        return True
+    except Exception, err:
+        log.Warn('Error converting file %s: %s' % (tempdir, str(err)))
+    return False

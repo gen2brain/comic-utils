@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'cc.ui'
+# Form implementation generated from reading ui file 'c:\comic-utils\comicutils\ui\cc.ui'
 #
-# Created: Fri Jan 27 22:33:12 2012
-#      by: PyQt4 UI code generator 4.9
+# Created: Tue Feb 14 00:15:15 2012
+#      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -17,7 +17,7 @@ except AttributeError:
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        MainWindow.resize(741, 682)
+        MainWindow.resize(804, 699)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -25,6 +25,13 @@ class Ui_MainWindow(object):
         MainWindow.setSizePolicy(sizePolicy)
         MainWindow.setStyleSheet(_fromUtf8("background-image: url(:/res/images/bg.gif);"))
         self.centralwidget = QtGui.QWidget(MainWindow)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        self.centralwidget.setSizePolicy(sizePolicy)
+        self.centralwidget.setMinimumSize(QtCore.QSize(804, 680))
+        self.centralwidget.setMaximumSize(QtCore.QSize(804, 680))
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.verticalLayout_14 = QtGui.QVBoxLayout(self.centralwidget)
         self.verticalLayout_14.setObjectName(_fromUtf8("verticalLayout_14"))
@@ -80,7 +87,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7.addLayout(self.horizontalLayout_5)
         self.verticalLayout_2.addLayout(self.horizontalLayout_7)
         self.opt_recursive = QtGui.QCheckBox(self.centralwidget)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.opt_recursive.sizePolicy().hasHeightForWidth())
@@ -97,6 +104,7 @@ class Ui_MainWindow(object):
         self.opt_size.setSizePolicy(sizePolicy)
         self.opt_size.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.opt_size.setMaximum(500)
+        self.opt_size.setSingleStep(5)
         self.opt_size.setObjectName(_fromUtf8("opt_size"))
         self.horizontalLayout_6.addWidget(self.opt_size)
         self.label_3 = QtGui.QLabel(self.centralwidget)
@@ -181,12 +189,12 @@ class Ui_MainWindow(object):
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.verticalLayout_10.addWidget(self.label_9)
         self.opt_suffix = QtGui.QLineEdit(self.centralwidget)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.opt_suffix.sizePolicy().hasHeightForWidth())
         self.opt_suffix.setSizePolicy(sizePolicy)
-        self.opt_suffix.setMinimumSize(QtCore.QSize(180, 24))
+        self.opt_suffix.setMinimumSize(QtCore.QSize(255, 24))
         self.opt_suffix.setStyleSheet(_fromUtf8("background-image: url(:/res/images/tile.png);"))
         self.opt_suffix.setObjectName(_fromUtf8("opt_suffix"))
         self.verticalLayout_10.addWidget(self.opt_suffix)
@@ -205,12 +213,12 @@ class Ui_MainWindow(object):
         self.label.setObjectName(_fromUtf8("label"))
         self.verticalLayout_5.addWidget(self.label)
         self.image_comboBox = QtGui.QComboBox(self.groupBox)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.MinimumExpanding, QtGui.QSizePolicy.Minimum)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.image_comboBox.sizePolicy().hasHeightForWidth())
         self.image_comboBox.setSizePolicy(sizePolicy)
-        self.image_comboBox.setMinimumSize(QtCore.QSize(0, 0))
+        self.image_comboBox.setMinimumSize(QtCore.QSize(200, 0))
         self.image_comboBox.setObjectName(_fromUtf8("image_comboBox"))
         self.image_comboBox.addItem(_fromUtf8(""))
         self.image_comboBox.setItemText(0, _fromUtf8(""))
@@ -231,12 +239,12 @@ class Ui_MainWindow(object):
         self.label_2.setObjectName(_fromUtf8("label_2"))
         self.verticalLayout_3.addWidget(self.label_2)
         self.archive_comboBox = QtGui.QComboBox(self.groupBox)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.MinimumExpanding, QtGui.QSizePolicy.Minimum)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.archive_comboBox.sizePolicy().hasHeightForWidth())
         self.archive_comboBox.setSizePolicy(sizePolicy)
-        self.archive_comboBox.setMinimumSize(QtCore.QSize(0, 0))
+        self.archive_comboBox.setMinimumSize(QtCore.QSize(200, 0))
         self.archive_comboBox.setObjectName(_fromUtf8("archive_comboBox"))
         self.archive_comboBox.addItem(_fromUtf8(""))
         self.archive_comboBox.setItemText(0, _fromUtf8(""))
@@ -319,9 +327,13 @@ class Ui_MainWindow(object):
         self.label_5.setObjectName(_fromUtf8("label_5"))
         self.horizontalLayout_2.addWidget(self.label_5)
         self.opt_quality = QtGui.QSlider(self.groupBox_3)
-        self.opt_quality.setMinimumSize(QtCore.QSize(0, 0))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.opt_quality.sizePolicy().hasHeightForWidth())
+        self.opt_quality.setSizePolicy(sizePolicy)
+        self.opt_quality.setMinimumSize(QtCore.QSize(150, 0))
         self.opt_quality.setMaximum(100)
-        self.opt_quality.setProperty("value", 85)
         self.opt_quality.setOrientation(QtCore.Qt.Horizontal)
         self.opt_quality.setTickPosition(QtGui.QSlider.TicksBelow)
         self.opt_quality.setObjectName(_fromUtf8("opt_quality"))
@@ -388,6 +400,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_13.addLayout(self.verticalLayout_12)
         self.verticalLayout_14.addLayout(self.horizontalLayout_13)
         MainWindow.setCentralWidget(self.centralwidget)
+        self.statusBar = QtGui.QStatusBar(MainWindow)
+        self.statusBar.setObjectName(_fromUtf8("statusBar"))
+        MainWindow.setStatusBar(self.statusBar)
         self.label_7.setBuddy(self.select_lineEdit)
         self.label_3.setBuddy(self.opt_size)
         self.label_8.setBuddy(self.opt_outdir)
@@ -465,10 +480,9 @@ class Ui_MainWindow(object):
         self.label_6.setToolTip(QtGui.QApplication.translate("MainWindow", "adjust the level of image contrast", None, QtGui.QApplication.UnicodeUTF8))
         self.label_6.setText(QtGui.QApplication.translate("MainWindow", "level", None, QtGui.QApplication.UnicodeUTF8))
         self.opt_level.setToolTip(QtGui.QApplication.translate("MainWindow", "Adjust the level of image contrast", None, QtGui.QApplication.UnicodeUTF8))
-        self.opt_level.setText(QtGui.QApplication.translate("MainWindow", "0", None, QtGui.QApplication.UnicodeUTF8))
         self.close_pushButton.setText(QtGui.QApplication.translate("MainWindow", "Close", None, QtGui.QApplication.UnicodeUTF8))
         self.about_pushButton.setText(QtGui.QApplication.translate("MainWindow", "&About", None, QtGui.QApplication.UnicodeUTF8))
-        self.cancel_pushButton.setText(QtGui.QApplication.translate("MainWindow", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
+        self.cancel_pushButton.setText(QtGui.QApplication.translate("MainWindow", "&Cancel", None, QtGui.QApplication.UnicodeUTF8))
         self.convert_pushButton.setText(QtGui.QApplication.translate("MainWindow", "&Convert", None, QtGui.QApplication.UnicodeUTF8))
 
 import cc_rc
